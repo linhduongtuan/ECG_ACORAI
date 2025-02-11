@@ -1,0 +1,22 @@
+##[pylyzer] failed /users/linh/downloads/ecgpreprocessor/ecg_processor/advanced_denoising.py 1738404492 3808
+.np = pyimport "__init__"
+.__init__ = pyimport "__init__"
+
+.pywt = pyimport "__init__"
+
+
+
+
+.___v_desugar_1 = pyimport "signal"
+.signal = pyimport "signal"
+.medfilt: Never
+.savgol_filter: Never
+.___v_desugar_2: Never
+.EMD: Never
+
+
+.wavelet_denoise: (signal: Obj, wavelet: Str := Str, level: Int := Int, mode: Str := Str) -> Never
+.adaptive_lms_filter: (desired: Obj, reference: Obj, mu: Float := Float, filter_order: Int := Int) -> Never
+.emd_denoise: (signal: Obj, imf_to_remove: Int := Int) -> Never
+.median_filter_signal: (signal: Obj, kernel_size: Int := Int) -> Never
+.smooth_signal: (signal: Obj, window_length: Int := Int, polyorder: Int := Int) -> Never
