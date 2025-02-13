@@ -182,7 +182,7 @@ Key Functions:
 
 ## Use CLI with mock data, Deep Learning Models, GNN-Based models for classification and timeseries prediction
 
-- **View Help*:** to see all options.
+- **View Help:** to see all options.
 
 ```python
 python ecg_cli_extended.py --help
