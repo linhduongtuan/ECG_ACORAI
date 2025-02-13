@@ -24,24 +24,37 @@ The package is modular, with each functionality organized into separate modules 
 
 ## Installation
 
-1. Clone the repository:
+1. Preinstall `uv` tooling (recommended)
 
 ```bash
-git clone https://github.com/linhduongtuan/ecg_processor.git
-cd ecg_processor
+# On macOS and Linux.
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
-
-2. Install the required dependencies:
 
 ```bash
-pip install -r requirements.txt
+# On Windows.
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-3. Install the package:
+Or, from [PyPI](https://pypi.org/project/uv/):
 
 ```bash
-pip install .
+pip install uv
 ```
+
+2. Clone the repository:
+
+```bash
+git clone https://github.com/linhduongtuan/ECG_ACORAI.git
+cd ECG_ACORAI
+```
+
+3. Install the required dependencies:
+
+```bash
+uv pip install -r requirements.txt
+```
+
 
 ---
 
@@ -162,7 +175,7 @@ Key Functions:
 
 ## Use CLI with mock data, Deep Learning Models, GNN-Based models for classification and timeseries prediction
 
-- **View Help*:* to see all options.
+- **View Help*:** to see all options.
 
 ```python
 python ecg_cli_extended.py --help
