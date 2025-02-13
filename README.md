@@ -206,7 +206,7 @@ python ecg_cli_extended.py train-dl --model-name TransformerClassifier --num-epo
 python ecg_cli_extended.py train-gnn --model-name Hybrid_GNN_LSTM --num-epochs 10 --batch-size 32 --optimizer-name adam --scheduler-name none --learning-rate 0.001 --gnn-hidden-channels 32 --lstm-hidden-size 16 --lstm-layers 1
 ```
 
-- **To improve code organization**, I've created a modular structure for `ecg_cli_extended.py`, separating it into `data_loader.py`, `models.py`, `training.py`, and `main.py` within the `DL_GNN` directory. The CLI commands are unaffected. For more details, let see `DL_GNN/README.md`.
+- **To improve code organization**, I've created a modular structure for `ecg_cli_extended.py`, separating it into `data_loader.py`, `models.py`, `training.py`, and `main.py` within the `DL_GNN` directory. The CLI commands are unaffected. For more details, let see [`DL_GNN/README.md`](https://github.com/linhduongtuan/ECG_ACORAI/blob/Academic/DL_GNN/README.md).
 
 ---
 ## Tutorials (WIP)
