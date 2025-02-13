@@ -1,4 +1,4 @@
-## How to Use
+# How to Use
 
 ## Run the CLI. For example:
 • **To simulate an ECG signal:**
