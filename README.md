@@ -1,8 +1,8 @@
-# ECGPreprocessor Package Documentation
+# ECG_ACORAI Package Documentation
 
 ## Overview
 
-The `ECGPreprocessor` package is a comprehensive Python library for processing and analyzing ECG (Electrocardiogram) signals. It provides tools for signal preprocessing, QRS detection, beat segmentation, feature extraction, heart rate variability (HRV) analysis, signal quality assessment, machine learning-based, deep learning-based, and Graph Neural Network-based for heart abnormality classification and future prediction.
+The `ECG_ACORAI` package is a comprehensive Python library for processing and analyzing ECG (Electrocardiogram) signals. It provides tools for signal preprocessing, QRS detection, beat segmentation, feature extraction, heart rate variability (HRV) analysis, signal quality assessment, machine learning-based, deep learning-based, and Graph Neural Network-based for heart abnormality classification and future prediction.
 
 The package is modular, with each functionality organized into separate modules for better maintainability and extensibility.
 
