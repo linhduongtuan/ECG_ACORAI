@@ -10,15 +10,22 @@ The package is modular, with each functionality organized into separate modules 
 
 ## Features
 
-- **Signal Preprocessing**: Bandpass filtering, notch filtering, baseline wander removal, and normalization.
-- **QRS Detection**: Detect QRS complexes using traditional and advanced algorithms (e.g., Pan-Tompkins).
-- **Beat Segmentation**: Segment ECG signals into individual heartbeats.
-- **Feature Extraction**: Extract statistical, wavelet, morphological, and frequency-domain features.
-- **HRV Analysis**: Calculate time-domain and frequency-domain HRV metrics.
-- **Signal Quality Assessment**: Assess signal quality using metrics like SNR, baseline stability, and noise levels.
-- **Machine Learning**: Train and use classifiers for beat classification.
-- **Visualization**: Plot signals, QRS detection, HRV metrics, and more.
-- **Train DL and GNN models with mock data**: Train and use classifier and timeseries prediction using Deep Learning and Graph Neural Network-based models
+- **Signal Preprocessing:** Apply bandpass filtering, notch filtering, baseline wander removal, and normalization. (More active voice)
+
+- **QRS Detection:** Detect QRS complexes using traditional and advanced algorithms (e.g., Pan-Tompkins). (No change needed, it's already well-phrased)
+
+- **Beat Segmentation:** Segment ECG signals into individual heartbeats. (No change needed)
+
+- **Feature Extraction:** Extract statistical, wavelet, morphological, and frequency-domain features. (No change needed)
+
+- **HRV Analysis:** Calculate time-domain and frequency-domain HRV metrics. (No change needed)
+Signal Quality Assessment: Assess signal quality using metrics such as SNR, baseline stability, and noise levels.
+
+- **Machine Learning:** Train and apply classifiers for beat classification. (More active voice and concise)
+
+- **Visualization:** Visualize signals, QRS detection, HRV metrics, and other relevant data. ("And more" can be replaced with "and other relevant data" or similar to be more specific if possible)
+
+- **Train DL and GNN models with mock data:** Train deep learning and graph neural network models on simulated data for classification and time series prediction.
 
 ---
 
@@ -198,6 +205,11 @@ python ecg_cli_extended.py train-dl --model-name TransformerClassifier --num-epo
 ```python
 python ecg_cli_extended.py train-gnn --model-name Hybrid_GNN_LSTM --num-epochs 10 --batch-size 32 --optimizer-name adam --scheduler-name none --learning-rate 0.001 --gnn-hidden-channels 32 --lstm-hidden-size 16 --lstm-layers 1
 ```
+
+---
+## Tutorials (WIP)
+
+I've added a `notebooks` folder with tutorials and test functions/classes for this repository.  Please feel free to contribute any insights you have on the source code!
 
 ---
 
