@@ -10,20 +10,20 @@ The package is modular, with each functionality organized into separate modules 
 
 ## Features
 
-- **Signal Preprocessing:** Apply bandpass filtering, notch filtering, baseline wander removal, and normalization. (More active voice)
+- **Signal Preprocessing:** Apply bandpass filtering, notch filtering, baseline wander removal, and normalization. 
 
-- **QRS Detection:** Detect QRS complexes using traditional and advanced algorithms (e.g., Pan-Tompkins). (No change needed, it's already well-phrased)
+- **QRS Detection:** Detect QRS complexes using traditional and advanced algorithms (e.g., Pan-Tompkins). 
 
-- **Beat Segmentation:** Segment ECG signals into individual heartbeats. (No change needed)
+- **Beat Segmentation:** Segment ECG signals into individual heartbeats. 
 
-- **Feature Extraction:** Extract statistical, wavelet, morphological, and frequency-domain features. (No change needed)
+- **Feature Extraction:** Extract statistical, wavelet, morphological, and frequency-domain features. 
 
-- **HRV Analysis:** Calculate time-domain and frequency-domain HRV metrics. (No change needed)
+- **HRV Analysis:** Calculate time-domain and frequency-domain HRV metrics. 
 Signal Quality Assessment: Assess signal quality using metrics such as SNR, baseline stability, and noise levels.
 
-- **Machine Learning:** Train and apply classifiers for beat classification. (More active voice and concise)
+- **Machine Learning:** Train and apply classifiers for beat classification.
 
-- **Visualization:** Visualize signals, QRS detection, HRV metrics, and other relevant data. ("And more" can be replaced with "and other relevant data" or similar to be more specific if possible)
+- **Visualization:** Visualize signals, QRS detection, HRV metrics, and other relevant data. 
 
 - **Train DL and GNN models with mock data:** Train deep learning and graph neural network models on simulated data for classification and time series prediction.
 
