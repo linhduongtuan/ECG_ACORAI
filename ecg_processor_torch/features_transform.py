@@ -99,9 +99,9 @@ def extract_stft_features(
         # Frequency band powers
         if freq_bands is None:
             freq_bands = {
-                "low": (0, 5),      # 0-5 Hz
+                "low": (0, 5),  # 0-5 Hz
                 "medium": (5, 20),  # 5-20 Hz
-                "high": (20, 50),   # 20-50 Hz
+                "high": (20, 50),  # 20-50 Hz
             }
 
         band_powers = {}
@@ -166,7 +166,9 @@ def _spectral_bandwidth(freqs: torch.Tensor, magnitude: torch.Tensor) -> float:
     """
     centroid = _spectral_centroid(freqs, magnitude)
     mag_sum = torch.sum(magnitude, dim=1)
-    variance = torch.sum(((freqs - centroid) ** 2) * mag_sum) / (torch.sum(mag_sum) + 1e-10)
+    variance = torch.sum(((freqs - centroid) ** 2) * mag_sum) / (
+        torch.sum(mag_sum) + 1e-10
+    )
     return torch.sqrt(variance).item()
 
 
@@ -209,7 +211,7 @@ def _spectral_flatness(magnitude: torch.Tensor) -> float:
     float
         Spectral flatness value.
     """
-    power = (magnitude ** 2) + 1e-10
+    power = (magnitude**2) + 1e-10
     geo_mean = torch.exp(torch.mean(torch.log(power)))
     arith_mean = torch.mean(power)
     return (geo_mean / arith_mean).item()
@@ -327,7 +329,9 @@ def extract_hybrid_features(
     try:
         if not isinstance(beat, np.ndarray) and not isinstance(beat, torch.Tensor):
             raise ValueError("Beat must be a numpy array or tensor")
-        if (isinstance(beat, np.ndarray) and beat.ndim != 1) or (isinstance(beat, torch.Tensor) and beat.dim() != 1):
+        if (isinstance(beat, np.ndarray) and beat.ndim != 1) or (
+            isinstance(beat, torch.Tensor) and beat.dim() != 1
+        ):
             raise ValueError("Beat must be a 1D array or tensor")
         if not isinstance(fs, (int, float)) or fs <= 0:
             raise ValueError("Sampling frequency must be positive")
@@ -366,12 +370,16 @@ def _calculate_cross_domain_features(stft_feats: Dict, wavelet_feats: Dict) -> D
         stft_total = stft_feats.get("stft_total_energy", 0)
         wavelet_total = wavelet_feats.get("wavelet_total_energy", 0)
         if stft_total > 0 and wavelet_total > 0:
-            cross_features["stft_to_wavelet_energy_ratio"] = float(stft_total / wavelet_total)
+            cross_features["stft_to_wavelet_energy_ratio"] = float(
+                stft_total / wavelet_total
+            )
         stft_energies = [v for k, v in stft_feats.items() if "energy" in k]
         wavelet_energies = [v for k, v in wavelet_feats.items() if "energy" in k]
         if stft_energies and wavelet_energies:
             min_len = min(len(stft_energies), len(wavelet_energies))
-            correlation = np.corrcoef(stft_energies[:min_len], wavelet_energies[:min_len])[0, 1]
+            correlation = np.corrcoef(
+                stft_energies[:min_len], wavelet_energies[:min_len]
+            )[0, 1]
             cross_features["energy_distribution_correlation"] = float(correlation)
     except Exception as e:
         logger.warning(f"Error in cross-domain feature calculation: {str(e)}")
@@ -389,10 +397,10 @@ def test_feature_extraction():
     # Create a synthetic ECG-like signal with multiple frequency components.
     fundamental = 1.0
     beat = (
-        1.0 * np.sin(2 * np.pi * fundamental * t) +      # Basic rhythm
-        0.5 * np.sin(2 * np.pi * 5 * t) +                  # QRS complex
-        0.3 * np.sin(2 * np.pi * 10 * t) +                 # P wave
-        0.2 * np.sin(2 * np.pi * 15 * t)                   # T wave
+        1.0 * np.sin(2 * np.pi * fundamental * t)  # Basic rhythm
+        + 0.5 * np.sin(2 * np.pi * 5 * t)  # QRS complex
+        + 0.3 * np.sin(2 * np.pi * 10 * t)  # P wave
+        + 0.2 * np.sin(2 * np.pi * 15 * t)  # T wave
     )
     noise = 0.1 * np.random.randn(len(t))
     beat_noisy = beat + noise
@@ -463,7 +471,9 @@ def test_feature_extraction():
         logger.info("\nFeature Statistics:")
         logger.info(f"STFT Features: {', '.join(stft_features.keys())}")
         logger.info(f"Wavelet Features: {', '.join(wavelet_features.keys())}")
-        cross_domain_count = len(hybrid_features) - len(stft_features) - len(wavelet_features)
+        cross_domain_count = (
+            len(hybrid_features) - len(stft_features) - len(wavelet_features)
+        )
         logger.info(f"Number of cross-domain features: {cross_domain_count}")
 
     except Exception as e:

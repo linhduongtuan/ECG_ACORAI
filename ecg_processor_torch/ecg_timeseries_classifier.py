@@ -12,9 +12,11 @@ from typing import Dict, Optional, Union, Tuple
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 # Custom exception for the ECG classifier
 class ECGClassifierError(Exception):
     pass
+
 
 class ECGTimeSeriesClassifier(nn.Module):
     def __init__(self, input_length: int, num_classes: int = 2):
@@ -49,7 +51,9 @@ class ECGTimeSeriesClassifier(nn.Module):
         self.bn1 = nn.BatchNorm1d(16)
         self.pool = nn.MaxPool1d(2)  # halves the time dimension
 
-        self.conv2 = nn.Conv1d(in_channels=16, out_channels=32, kernel_size=5, padding=2)
+        self.conv2 = nn.Conv1d(
+            in_channels=16, out_channels=32, kernel_size=5, padding=2
+        )
         self.bn2 = nn.BatchNorm1d(32)
 
         # After two pooling operations, the time dimension becomes: input_length // 4
@@ -88,7 +92,7 @@ class ECGTimeSeriesClassifier(nn.Module):
             x = self.conv1(x)  # (batch, 16, input_length)
             x = self.bn1(x)
             x = torch.relu(x)
-            x = self.pool(x)   # (batch, 16, input_length/2)
+            x = self.pool(x)  # (batch, 16, input_length/2)
         except Exception as e:
             logger.error(f"Error in convolution block 1: {str(e)}")
             raise ECGClassifierError(f"Forward pass failed in conv block 1: {str(e)}")
@@ -97,7 +101,7 @@ class ECGTimeSeriesClassifier(nn.Module):
         x = self.conv2(x)  # (batch, 32, input_length/2)
         x = self.bn2(x)
         x = torch.relu(x)
-        x = self.pool(x)   # (batch, 32, input_length/4)
+        x = self.pool(x)  # (batch, 32, input_length/4)
 
         # Prepare data for LSTM: permute from (batch, channels, seq_length) --> (batch, seq_length, channels)
         x = x.permute(0, 2, 1)  # (batch, input_length/4, 32)
@@ -109,6 +113,7 @@ class ECGTimeSeriesClassifier(nn.Module):
         # Final classification layer
         output = self.fc(last_output)  # (batch, num_classes)
         return output
+
 
 def train_time_series_classifier(
     model: ECGTimeSeriesClassifier,
@@ -241,7 +246,9 @@ def train_time_series_classifier(
                 else:
                     patience_counter += 1
                     if patience_counter >= early_stopping_patience:
-                        logger.info(f"Early stopping triggered after {epoch + 1} epochs")
+                        logger.info(
+                            f"Early stopping triggered after {epoch + 1} epochs"
+                        )
                         break
 
                 logger.info(
@@ -260,10 +267,9 @@ def train_time_series_classifier(
         logger.error(f"Training failed: {str(e)}")
         raise ECGClassifierError(f"Training failed: {str(e)}")
 
+
 def predict(
-    model: ECGTimeSeriesClassifier,
-    x: np.ndarray,
-    return_probabilities: bool = False
+    model: ECGTimeSeriesClassifier, x: np.ndarray, return_probabilities: bool = False
 ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
     """
     Predict classes for given ECG time-series data.

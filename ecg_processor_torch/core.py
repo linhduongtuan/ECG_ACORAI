@@ -33,12 +33,15 @@ import neurokit2 as nk
 
 logger = logging.getLogger(__name__)
 
+
 # ---------------------------
 # Exception and Tracker Classes
 # ---------------------------
 class ProcessingError(Exception):
     """Custom exception for ECG signal processing errors."""
+
     pass
+
 
 class ValidationTracker:
     def __init__(self):
@@ -57,7 +60,9 @@ class ValidationTracker:
             elif isinstance(signal_input, np.ndarray):
                 signal_np = signal_input
             else:
-                raise ValueError(f"{stage}: Signal must be a numpy array or torch tensor")
+                raise ValueError(
+                    f"{stage}: Signal must be a numpy array or torch tensor"
+                )
 
             if signal_np.ndim != 1:
                 raise ValueError(f"{stage}: Signal must be 1-dimensional")
@@ -78,6 +83,7 @@ class ValidationTracker:
     def get_report(self) -> Dict:
         return {"warnings": self.warnings, "errors": self.errors}
 
+
 # ---------------------------
 # Decorator for Debugging/Profiling
 # ---------------------------
@@ -90,7 +96,9 @@ def debug_and_profile(func):
             return result
         else:
             return func(self, *args, **kwargs)
+
     return wrapper
+
 
 # ---------------------------
 # ECG Preprocessor using PyTorch for internal data handling
@@ -124,14 +132,21 @@ class ECGPreprocessor:
 
         # Basic parameter validation
         if not isinstance(sampling_rate, int) or sampling_rate <= 0:
-            raise ValueError(f"Sampling rate must be positive integer, got {sampling_rate}")
+            raise ValueError(
+                f"Sampling rate must be positive integer, got {sampling_rate}"
+            )
         if lead_config not in ["single", "multi"]:
-            raise ValueError(f"Invalid lead config '{lead_config}'. Must be 'single' or 'multi'")
+            raise ValueError(
+                f"Invalid lead config '{lead_config}'. Must be 'single' or 'multi'"
+            )
 
         try:
             # Create filter coefficients via our torch-based utils.
             self.bp_b, self.bp_a = create_bandpass_filter(
-                ECGConfig.FILTER_LOWCUT, ECGConfig.FILTER_HIGHCUT, self.fs, ECGConfig.FILTER_ORDER
+                ECGConfig.FILTER_LOWCUT,
+                ECGConfig.FILTER_HIGHCUT,
+                self.fs,
+                ECGConfig.FILTER_ORDER,
             )
             self.notch_b, self.notch_a = create_notch_filter(
                 ECGConfig.NOTCH_FREQ, ECGConfig.NOTCH_Q, self.fs
@@ -186,7 +201,9 @@ class ECGPreprocessor:
             # Feature extraction.
             beat_features = self._extract_features(beats)
             # Signal quality metrics.
-            quality_metrics = calculate_signal_quality(original_signal, signal_norm, self.fs)
+            quality_metrics = calculate_signal_quality(
+                original_signal, signal_norm, self.fs
+            )
 
             results = {
                 "original_signal": original_signal,
@@ -213,8 +230,10 @@ class ECGPreprocessor:
             # If advanced denoising is enabled, apply it.
             if self.advanced_denoising:
                 from .advanced_denoising import advanced_denoise_pipeline
+
                 denoise_res = advanced_denoise_pipeline(
-                    signal_filt, self.fs,
+                    signal_filt,
+                    self.fs,
                     remove_resp=self.remove_respiratory,
                     remove_emg=self.remove_emg,
                     remove_eda=self.remove_eda,
@@ -235,20 +254,23 @@ class ECGPreprocessor:
         # Basic input checks already done.
         try:
             derivative = np.gradient(signal_np)
-            squared = derivative ** 2
+            squared = derivative**2
             window = int(0.15 * self.fs)
             if window % 2 == 0:
                 window += 1
             ma = np.convolve(squared, np.ones(window) / window, mode="same")
             threshold = 0.3 * np.mean(ma)
             from scipy.signal import find_peaks
+
             peaks, _ = find_peaks(ma, height=threshold, distance=int(0.2 * self.fs))
             return peaks
         except Exception as e:
             logger.error(f"Error in QRS detection: {str(e)}")
             raise
 
-    def _segment_beats(self, signal_np: np.ndarray, peaks: np.ndarray) -> List[np.ndarray]:
+    def _segment_beats(
+        self, signal_np: np.ndarray, peaks: np.ndarray
+    ) -> List[np.ndarray]:
         """
         Segment the ECG signal into beats (600ms windows: 200ms before and 400ms after each R-peak).
         """
@@ -305,12 +327,16 @@ class ECGPreprocessor:
                         wave_feats = extract_wavelet_features(beat)
                         beat_feats.update(wave_feats)
                     except Exception as e:
-                        logger.warning(f"Wavelet feature extraction failed for beat {i}: {str(e)}")
+                        logger.warning(
+                            f"Wavelet feature extraction failed for beat {i}: {str(e)}"
+                        )
                     try:
                         morph_feats = extract_morphological_features(beat, self.fs)
                         beat_feats.update(morph_feats)
                     except Exception as e:
-                        logger.warning(f"Morphological feature extraction failed for beat {i}: {str(e)}")
+                        logger.warning(
+                            f"Morphological feature extraction failed for beat {i}: {str(e)}"
+                        )
                     beat_feats = {k: v for k, v in beat_feats.items() if v is not None}
                     if beat_feats:
                         features[f"beat_{i}"] = beat_feats
@@ -364,9 +390,13 @@ class ECGPreprocessor:
         """Load the classifier and scaler from disk."""
         try:
             if not ECGConfig.MODEL_PATH.exists():
-                raise FileNotFoundError(f"Model file not found at {ECGConfig.MODEL_PATH}")
+                raise FileNotFoundError(
+                    f"Model file not found at {ECGConfig.MODEL_PATH}"
+                )
             if not ECGConfig.SCALER_PATH.exists():
-                raise FileNotFoundError(f"Scaler file not found at {ECGConfig.SCALER_PATH}")
+                raise FileNotFoundError(
+                    f"Scaler file not found at {ECGConfig.SCALER_PATH}"
+                )
             self.classifier = joblib.load(ECGConfig.MODEL_PATH)
             self.scaler = joblib.load(ECGConfig.SCALER_PATH)
             if not isinstance(self.classifier, RandomForestClassifier):
@@ -377,7 +407,9 @@ class ECGPreprocessor:
             logger.error(f"Error loading classifier: {str(e)}")
             raise
 
-    def _prepare_features_for_classification(self, beats: List[np.ndarray]) -> np.ndarray:
+    def _prepare_features_for_classification(
+        self, beats: List[np.ndarray]
+    ) -> np.ndarray:
         """Prepare a feature matrix from beat features."""
         try:
             features = self._extract_features(beats)
@@ -387,7 +419,9 @@ class ECGPreprocessor:
             feature_names = list(first_beat_features.keys())
             X = []
             for beat_features in features.values():
-                feature_vector = [beat_features.get(fname, 0.0) for fname in feature_names]
+                feature_vector = [
+                    beat_features.get(fname, 0.0) for fname in feature_names
+                ]
                 X.append(feature_vector)
             X = np.array(X)
             if X.size == 0:
@@ -398,6 +432,7 @@ class ECGPreprocessor:
             logger.error(f"Error preparing features: {str(e)}")
             raise
 
+
 # ---------------------------
 # Real-Time ECG Processor (simplified version)
 # ---------------------------
@@ -407,7 +442,10 @@ class RealTimeECGProcessor:
     This version uses online buffering and filtering; most filtering still relies
     on SciPy (with coefficients that could be produced via our torch-based utils).
     """
-    def __init__(self, sampling_rate: int = 250, buffer_size: int = 2000, overlap: int = 500):
+
+    def __init__(
+        self, sampling_rate: int = 250, buffer_size: int = 2000, overlap: int = 500
+    ):
         self.sampling_rate = sampling_rate
         self.buffer_size = buffer_size
         self.overlap = overlap
@@ -417,7 +455,9 @@ class RealTimeECGProcessor:
         self.quality_buffer = collections.deque(maxlen=100)
 
         self.initialize_filters()
-        self.preprocessor = ECGPreprocessor(sampling_rate=sampling_rate, advanced_denoising=True)
+        self.preprocessor = ECGPreprocessor(
+            sampling_rate=sampling_rate, advanced_denoising=True
+        )
         self.quality_threshold = 0.6
         self.initialize_feature_extractors()
 
@@ -449,7 +489,8 @@ class RealTimeECGProcessor:
         delta2 = new_value - self.signal_mean
         if self._n_samples > 1:
             self.signal_std = np.sqrt(
-                ((self._n_samples - 2) * (self.signal_std ** 2) + delta * delta2) / (self._n_samples - 1)
+                ((self._n_samples - 2) * (self.signal_std**2) + delta * delta2)
+                / (self._n_samples - 1)
             )
 
     def process_sample(self, sample: float) -> Dict:
@@ -490,9 +531,14 @@ class RealTimeECGProcessor:
             quality_metrics = assess_signal_quality(signal_win, self.sampling_rate)
             self.quality_buffer.append(quality_metrics.get("overall_quality", 1))
             if quality_metrics.get("overall_quality", 1) < self.quality_threshold:
-                return {"quality": quality_metrics, "alert": "Poor signal quality detected"}
+                return {
+                    "quality": quality_metrics,
+                    "alert": "Poor signal quality detected",
+                }
             # Detect R-peaks via neurokit2.
-            peaks = self.r_peak_detector(signal_win, self.sampling_rate)[1]["ECG_R_Peaks"]
+            peaks = self.r_peak_detector(signal_win, self.sampling_rate)[1][
+                "ECG_R_Peaks"
+            ]
             waves = None
             if len(peaks) > 0:
                 waves = self.wave_delineator(signal_win, peaks, self.sampling_rate)
@@ -537,6 +583,7 @@ class RealTimeECGProcessor:
                 alerts.append("T-wave alternans detected")
         return alerts
 
+
 # ---------------------------
 # End of Core Processing Module
 # ---------------------------
@@ -547,7 +594,9 @@ if __name__ == "__main__":
 
         sampling_rate = ECGConfig.DEFAULT_SAMPLING_RATE
         duration = 10  # seconds
-        ecg_signal = nk.ecg_simulate(duration=duration, sampling_rate=sampling_rate, noise=0.1)
+        ecg_signal = nk.ecg_simulate(
+            duration=duration, sampling_rate=sampling_rate, noise=0.1
+        )
 
         # Use the ECGPreprocessor for offline processing.
         preprocessor = ECGPreprocessor(debug=True)
@@ -560,10 +609,13 @@ if __name__ == "__main__":
             except Exception as e:
                 logger.error(f"Error in improved QRS detection: {str(e)}")
                 from scipy.signal import find_peaks
+
                 peaks, _ = find_peaks(signal, distance=int(0.5 * self.fs))
                 return peaks
 
-        def improved_segment_beats(self, signal: np.ndarray, peaks: np.ndarray) -> List[np.ndarray]:
+        def improved_segment_beats(
+            self, signal: np.ndarray, peaks: np.ndarray
+        ) -> List[np.ndarray]:
             beats = []
             pre_window = int(0.2 * self.fs)
             post_window = int(0.4 * self.fs)
@@ -574,8 +626,12 @@ if __name__ == "__main__":
                         beats.append(beat)
             return beats
 
-        preprocessor._detect_qrs_peaks = improved_detect_qrs_peaks.__get__(preprocessor, ECGPreprocessor)
-        preprocessor._segment_beats = improved_segment_beats.__get__(preprocessor, ECGPreprocessor)
+        preprocessor._detect_qrs_peaks = improved_detect_qrs_peaks.__get__(
+            preprocessor, ECGPreprocessor
+        )
+        preprocessor._segment_beats = improved_segment_beats.__get__(
+            preprocessor, ECGPreprocessor
+        )
 
         print("Processing ECG signal with ECGPreprocessor...")
         results = preprocessor.process_signal(ecg_signal)
@@ -591,7 +647,12 @@ if __name__ == "__main__":
         plt.subplot(211)
         plt.plot(t, results["original_signal"], label="Original", alpha=0.7)
         plt.plot(t, results["processed_signal"], label="Processed", alpha=0.7)
-        plt.plot(results["peaks"] / sampling_rate, results["processed_signal"][results["peaks"]], "ro", label="QRS Peaks")
+        plt.plot(
+            results["peaks"] / sampling_rate,
+            results["processed_signal"][results["peaks"]],
+            "ro",
+            label="QRS Peaks",
+        )
         plt.xlabel("Time (s)")
         plt.ylabel("Amplitude")
         plt.title("ECG Signal Processing Results")
@@ -601,7 +662,7 @@ if __name__ == "__main__":
             plt.subplot(212)
             beat_time = np.arange(len(results["beats"][0])) / sampling_rate
             for i, beat in enumerate(results["beats"][:5]):
-                plt.plot(beat_time, beat, label=f"Beat {i+1}", alpha=0.7)
+                plt.plot(beat_time, beat, label=f"Beat {i + 1}", alpha=0.7)
             plt.xlabel("Time (s)")
             plt.ylabel("Amplitude")
             plt.title("Individual Beats")
@@ -617,15 +678,24 @@ if __name__ == "__main__":
             labels = np.random.choice([0, 1], size=n_beats, p=[0.8, 0.2])
             try:
                 ECGConfig.ensure_model_dir()
-                training_success = preprocessor.train_classifier(results["beats"], labels)
+                training_success = preprocessor.train_classifier(
+                    results["beats"], labels
+                )
                 if training_success:
                     print("Classifier trained successfully")
                     print(f"Models saved to {ECGConfig.MODEL_DIR}")
-                    classification_results = preprocessor.classify_beats(results["beats"])
+                    classification_results = preprocessor.classify_beats(
+                        results["beats"]
+                    )
                     if classification_results:
                         print("\nClassification Results:")
-                        print(f"Number of beats classified: {len(classification_results['classifications'])}")
-                        unique, counts = np.unique(classification_results["classifications"], return_counts=True)
+                        print(
+                            f"Number of beats classified: {len(classification_results['classifications'])}"
+                        )
+                        unique, counts = np.unique(
+                            classification_results["classifications"],
+                            return_counts=True,
+                        )
                         print("Class distribution:", dict(zip(unique, counts)))
                 else:
                     print("Classifier training failed")

@@ -10,6 +10,7 @@ from .ecg_preprocessor import ECGPreprocessor
 
 logger = logging.getLogger(__name__)
 
+
 def torch_lfilter(b: torch.Tensor, a: torch.Tensor, x: torch.Tensor, zi: torch.Tensor):
     """
     A simple IIR filter implementation in PyTorch.
@@ -57,10 +58,13 @@ def torch_lfilter(b: torch.Tensor, a: torch.Tensor, x: torch.Tensor, zi: torch.T
                 z[i - 1] = b[i] * x[n] - a[i] * y[n]
     return y, z
 
+
 class RealTimeECGProcessor:
     """Real-time ECG signal processor with streaming capabilities (using PyTorch)."""
 
-    def __init__(self, sampling_rate: int = 250, buffer_size: int = 2000, overlap: int = 500):
+    def __init__(
+        self, sampling_rate: int = 250, buffer_size: int = 2000, overlap: int = 500
+    ):
         self.sampling_rate = sampling_rate
         self.buffer_size = buffer_size
         self.overlap = overlap
@@ -134,11 +138,15 @@ class RealTimeECGProcessor:
             # Apply the bandpass filter using torch_lfilter.
             # Scale initial state by the first sample (as in original code).
             bp_zi_scaled = self.bp_state * window_data[0]
-            filtered, self.bp_state = torch_lfilter(self.bp_b, self.bp_a, window_data, bp_zi_scaled)
+            filtered, self.bp_state = torch_lfilter(
+                self.bp_b, self.bp_a, window_data, bp_zi_scaled
+            )
 
             # Apply the notch filter.
             notch_zi_scaled = self.notch_state * filtered[0]
-            filtered, self.notch_state = torch_lfilter(self.notch_b, self.notch_a, filtered, notch_zi_scaled)
+            filtered, self.notch_state = torch_lfilter(
+                self.notch_b, self.notch_a, filtered, notch_zi_scaled
+            )
 
             # Process the filtered signal via the preprocessor.
             # (Assuming ECGPreprocessor.process_signal accepts a numpy array.)

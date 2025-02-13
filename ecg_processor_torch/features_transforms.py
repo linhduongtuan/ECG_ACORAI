@@ -18,10 +18,12 @@ logger = logging.getLogger(__name__)
 
 # --- Scaler Implementations ---
 
+
 class TorchStandardScaler:
     """
     A simple standard scaler that subtracts the mean and divides by the standard deviation.
     """
+
     def __init__(self):
         self.mean = None
         self.std = None
@@ -44,6 +46,7 @@ class TorchRobustScaler:
     """
     A robust scaler that subtracts the median and scales according to the interquartile range.
     """
+
     def __init__(self):
         self.median = None
         self.iqr = None
@@ -65,14 +68,18 @@ class TorchRobustScaler:
 
 # --- PCA Implementation ---
 
+
 class TorchPCA:
     """
     A simple PCA implementation using torch.linalg.svd.
     """
+
     def __init__(self, n_components: int):
         self.n_components = n_components
         self.mean = None
-        self.components = None  # Will hold the projection matrix (n_features x n_components)
+        self.components = (
+            None  # Will hold the projection matrix (n_features x n_components)
+        )
 
     def fit(self, X: torch.Tensor):
         # X shape: (n_samples, n_features)
@@ -81,7 +88,7 @@ class TorchPCA:
         # Use SVD on the centered data.
         U, S, Vh = torch.linalg.svd(X_centered, full_matrices=False)
         # Vh is (n_features, n_features); we take the first n_components rows and transpose.
-        self.components = Vh[:self.n_components, :].T
+        self.components = Vh[: self.n_components, :].T
 
     def transform(self, X: torch.Tensor) -> torch.Tensor:
         if self.mean is None or self.components is None:
@@ -94,6 +101,7 @@ class TorchPCA:
 
 
 # --- Helper Functions for Data Distribution Checks ---
+
 
 def _is_heavily_skewed(
     data: Union[torch.Tensor, np.ndarray], threshold: float = 0.5
@@ -113,14 +121,16 @@ def _is_heavily_skewed(
                 return False
             traditional_skewness = abs(skewness)
             quartile_skewness = abs((q3 + q1 - 2 * median) / iqr)
-            return (traditional_skewness > threshold * 2) or (quartile_skewness > threshold)
+            return (traditional_skewness > threshold * 2) or (
+                quartile_skewness > threshold
+            )
         else:
             valid_data = data[~torch.isnan(data)]
             if valid_data.numel() < 3:
                 return False
             mean_val = valid_data.mean()
             std_val = valid_data.std(unbiased=False)
-            skewness = ((valid_data - mean_val) ** 3).mean() / (std_val ** 3 + 1e-10)
+            skewness = ((valid_data - mean_val) ** 3).mean() / (std_val**3 + 1e-10)
             skewness = abs(skewness.item())
             q1 = torch.quantile(valid_data, 0.25)
             median = torch.quantile(valid_data, 0.5)
@@ -164,13 +174,16 @@ def _has_outliers(
                 return False
             lower_bound = q1 - threshold * iqr
             upper_bound = q3 + threshold * iqr
-            return torch.any(valid_data < lower_bound) or torch.any(valid_data > upper_bound)
+            return torch.any(valid_data < lower_bound) or torch.any(
+                valid_data > upper_bound
+            )
     except Exception as e:
         logger.warning(f"Error in outlier detection: {str(e)}")
         return False
 
 
 # --- Feature Transformer Class ---
+
 
 class FeatureTransformer:
     """
@@ -350,6 +363,7 @@ class FeatureTransformer:
 
 # --- Testing Function ---
 
+
 def test_feature_transformer():
     """
     Test the FeatureTransformer class with synthetic data.
@@ -378,7 +392,9 @@ def test_feature_transformer():
             original = features[feature_name]
             reconstructed = inverse_transformed[feature_name]
             valid_mask = ~torch.isnan(original)
-            mse = ((original[valid_mask] - reconstructed[valid_mask]) ** 2).mean().item()
+            mse = (
+                ((original[valid_mask] - reconstructed[valid_mask]) ** 2).mean().item()
+            )
             print(f"\nMSE for {feature_name}: {mse:.6f}")
     except Exception as e:
         print(f"Test failed: {str(e)}")

@@ -12,11 +12,13 @@ from typing import Dict, List
 from pathlib import Path
 import torch
 
+
 # Helper function: if an array is a numpy array, converts it to a torch.Tensor on the desired device.
 def _to_tensor(arr, device):
     if isinstance(arr, np.ndarray):
         return torch.from_numpy(arr).to(device)
     return arr
+
 
 class ECGDataLoader:
     """
@@ -254,7 +256,8 @@ class ECGDataLoader:
 
 if __name__ == "__main__":
     logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
     loader = ECGDataLoader(device="cpu")  # or change to "cuda" if available
     print("Supported formats:", loader.get_supported_formats())

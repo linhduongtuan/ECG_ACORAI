@@ -12,7 +12,9 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
 
 
-def create_bandpass_filter(lowcut: float, highcut: float, fs: float, order: int = 4) -> tuple:
+def create_bandpass_filter(
+    lowcut: float, highcut: float, fs: float, order: int = 4
+) -> tuple:
     """
     Create bandpass filter coefficients with input validation and error handling.
 
@@ -30,9 +32,12 @@ def create_bandpass_filter(lowcut: float, highcut: float, fs: float, order: int 
         if lowcut <= 0:
             raise ValueError("Lower cutoff must be positive")
         if highcut >= fs / 2:
-            raise ValueError(f"Upper cutoff must be less than Nyquist frequency ({fs / 2} Hz)")
+            raise ValueError(
+                f"Upper cutoff must be less than Nyquist frequency ({fs / 2} Hz)"
+            )
 
         from scipy.signal import butter, tf2zpk
+
         nyquist = 0.5 * fs
         low = lowcut / nyquist
         high = highcut / nyquist
@@ -42,7 +47,9 @@ def create_bandpass_filter(lowcut: float, highcut: float, fs: float, order: int 
         if np.any(np.abs(p) >= 1):
             logger.warning("Created filter may be unstable")
 
-        return torch.tensor(b, dtype=torch.float64), torch.tensor(a, dtype=torch.float64)
+        return torch.tensor(b, dtype=torch.float64), torch.tensor(
+            a, dtype=torch.float64
+        )
 
     except Exception as e:
         logger.error(f"Error creating bandpass filter: {str(e)}")
@@ -64,6 +71,7 @@ def create_notch_filter(freq: float, q: float, fs: float) -> tuple:
             raise ValueError("Q factor must be positive")
 
         from scipy.signal import iirnotch, tf2zpk
+
         nyquist = 0.5 * fs
         norm_freq = freq / nyquist
         b, a = iirnotch(norm_freq, q)
@@ -71,14 +79,18 @@ def create_notch_filter(freq: float, q: float, fs: float) -> tuple:
         if np.any(np.abs(p) >= 1):
             logger.warning("Created notch filter may be unstable")
 
-        return torch.tensor(b, dtype=torch.float64), torch.tensor(a, dtype=torch.float64)
+        return torch.tensor(b, dtype=torch.float64), torch.tensor(
+            a, dtype=torch.float64
+        )
 
     except Exception as e:
         logger.error(f"Error creating notch filter: {str(e)}")
         raise
 
 
-def normalize_signal(signal: np.ndarray, method: str = "minmax", eps: float = 1e-10) -> np.ndarray:
+def normalize_signal(
+    signal: np.ndarray, method: str = "minmax", eps: float = 1e-10
+) -> np.ndarray:
     """
     Normalize a signal using various methods with improved numerical stability.
 
@@ -159,8 +171,11 @@ def load_data(file_path: str, **kwargs) -> torch.Tensor:
             data = np.loadtxt(file_path, **txt_kwargs)
         elif ext == ".mat":
             from scipy.io import loadmat
+
             mat_data = loadmat(file_path, **kwargs)
-            data = next(value for key, value in mat_data.items() if not key.startswith("__"))
+            data = next(
+                value for key, value in mat_data.items() if not key.startswith("__")
+            )
         else:
             raise ValueError(f"Unsupported file format: {ext}")
 
@@ -201,6 +216,7 @@ def resample_signal(signal: np.ndarray, fs_in: float, fs_out: float) -> torch.Te
         ratio = fs_out / fs_in
         n_samples = int(len(signal) * ratio)
         from scipy.signal import resample
+
         resampled = resample(signal.astype(np.float64), n_samples)
         return torch.tensor(resampled, dtype=torch.float64)
     except Exception as e:
@@ -208,7 +224,9 @@ def resample_signal(signal: np.ndarray, fs_in: float, fs_out: float) -> torch.Te
         raise
 
 
-def segment_signal(signal: np.ndarray, segment_length: int, overlap: float = 0.5) -> torch.Tensor:
+def segment_signal(
+    signal: np.ndarray, segment_length: int, overlap: float = 0.5
+) -> torch.Tensor:
     """
     Segment a signal into overlapping windows.
 
@@ -235,14 +253,16 @@ def segment_signal(signal: np.ndarray, segment_length: int, overlap: float = 0.5
         segments = np.zeros((n_segments, segment_length), dtype=np.float64)
         for i in range(n_segments):
             start = i * step
-            segments[i] = signal[start: start + segment_length]
+            segments[i] = signal[start : start + segment_length]
         return torch.tensor(segments, dtype=torch.float64)
     except Exception as e:
         logger.error(f"Error segmenting signal: {str(e)}")
         raise
 
 
-def detect_outliers(signal: np.ndarray, threshold: float = 3.0, method: str = "zscore") -> np.ndarray:
+def detect_outliers(
+    signal: np.ndarray, threshold: float = 3.0, method: str = "zscore"
+) -> np.ndarray:
     """
     Detect outliers in a signal using various methods.
 
@@ -283,7 +303,9 @@ def detect_outliers(signal: np.ndarray, threshold: float = 3.0, method: str = "z
         raise
 
 
-def interpolate_missing(signal: np.ndarray, mask: np.ndarray, method: str = "linear") -> torch.Tensor:
+def interpolate_missing(
+    signal: np.ndarray, mask: np.ndarray, method: str = "linear"
+) -> torch.Tensor:
     """
     Interpolate missing or invalid values in a signal.
 
@@ -305,7 +327,10 @@ def interpolate_missing(signal: np.ndarray, mask: np.ndarray, method: str = "lin
         if len(x_known) < 2:
             raise ValueError("Not enough valid points for interpolation")
         from scipy.interpolate import interp1d
-        f = interp1d(x_known, y_known, kind=method, bounds_error=False, fill_value="extrapolate")
+
+        f = interp1d(
+            x_known, y_known, kind=method, bounds_error=False, fill_value="extrapolate"
+        )
         y_interp = f(x)
         result = signal.copy()
         result[mask] = y_interp[mask]

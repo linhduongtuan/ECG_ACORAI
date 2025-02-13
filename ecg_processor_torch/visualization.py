@@ -37,11 +37,13 @@ plt.rcParams.update(
 DEFAULT_FIGSIZE = (12, 8)
 DEFAULT_DPI = 100
 
+
 def _to_numpy(data):
     """Convert data to a numpy array if it is a torch tensor. Otherwise return as is."""
     if torch.is_tensor(data):
         return data.detach().cpu().numpy()
     return data
+
 
 def plot_signal_comparison(
     original: np.ndarray,
@@ -62,7 +64,9 @@ def plot_signal_comparison(
         original = _to_numpy(original)
         processed = _to_numpy(processed)
 
-        if not isinstance(original, np.ndarray) or not isinstance(processed, np.ndarray):
+        if not isinstance(original, np.ndarray) or not isinstance(
+            processed, np.ndarray
+        ):
             raise ValueError("Signals must be numpy arrays or torch tensors")
         if len(original) != len(processed):
             raise ValueError("Signals must have the same length")
@@ -121,6 +125,7 @@ def plot_signal_comparison(
     except Exception as e:
         logger.error(f"Error plotting signal comparison: {str(e)}")
         raise
+
 
 def plot_comprehensive_analysis(
     results: Dict, figsize: Tuple[int, int] = (15, 12), save_path: Optional[str] = None
@@ -186,6 +191,7 @@ def plot_comprehensive_analysis(
 
         if "sd1" in results["hrv_metrics"] and "sd2" in results["hrv_metrics"]:
             from matplotlib.patches import Ellipse
+
             sd1 = results["hrv_metrics"]["sd1"]
             sd2 = results["hrv_metrics"]["sd2"]
             mean_rr = np.mean(rr_intervals)
@@ -220,18 +226,24 @@ def plot_comprehensive_analysis(
             lf_mask = (results["frequencies"] > 0.04) & (results["frequencies"] <= 0.15)
             hf_mask = (results["frequencies"] > 0.15) & (results["frequencies"] <= 0.4)
 
-            ax5.fill_between(results["frequencies"][vlf_mask],
-                             results["psd"][vlf_mask],
-                             alpha=0.3,
-                             label="VLF")
-            ax5.fill_between(results["frequencies"][lf_mask],
-                             results["psd"][lf_mask],
-                             alpha=0.3,
-                             label="LF")
-            ax5.fill_between(results["frequencies"][hf_mask],
-                             results["psd"][hf_mask],
-                             alpha=0.3,
-                             label="HF")
+            ax5.fill_between(
+                results["frequencies"][vlf_mask],
+                results["psd"][vlf_mask],
+                alpha=0.3,
+                label="VLF",
+            )
+            ax5.fill_between(
+                results["frequencies"][lf_mask],
+                results["psd"][lf_mask],
+                alpha=0.3,
+                label="LF",
+            )
+            ax5.fill_between(
+                results["frequencies"][hf_mask],
+                results["psd"][hf_mask],
+                alpha=0.3,
+                label="HF",
+            )
             ax5.legend()
 
             if all(k in results["hrv_metrics"] for k in ["lf_hf_ratio", "total_power"]):
@@ -255,6 +267,7 @@ def plot_comprehensive_analysis(
         logger.error(f"Error plotting comprehensive analysis: {str(e)}")
         raise
 
+
 def plot_advanced_analysis(data, **kwargs):
     """
     Plot an advanced analysis overview of the ECG data.
@@ -267,6 +280,7 @@ def plot_advanced_analysis(data, **kwargs):
     ax.set_ylabel("Frequency")
     plt.tight_layout()
     return fig
+
 
 def plot_beat_template(
     template: np.ndarray,
@@ -283,7 +297,9 @@ def plot_beat_template(
         template = _to_numpy(template)
         if confidence_interval is not None:
             confidence_interval = _to_numpy(confidence_interval)
-            if confidence_interval.shape[0] != 2 or confidence_interval.shape[1] != len(template):
+            if confidence_interval.shape[0] != 2 or confidence_interval.shape[1] != len(
+                template
+            ):
                 raise ValueError("Confidence interval must be 2xN array")
         if fs <= 0:
             raise ValueError("Sampling frequency must be positive")
@@ -291,12 +307,14 @@ def plot_beat_template(
         time = np.arange(len(template)) / fs * 1000
         fig, ax = plt.subplots(figsize=figsize, dpi=DEFAULT_DPI)
         if confidence_interval is not None:
-            ax.fill_between(time,
-                            confidence_interval[0],
-                            confidence_interval[1],
-                            alpha=0.3,
-                            color="gray",
-                            label="95% CI")
+            ax.fill_between(
+                time,
+                confidence_interval[0],
+                confidence_interval[1],
+                alpha=0.3,
+                color="gray",
+                label="95% CI",
+            )
         ax.plot(time, template, "b-", label="Template", linewidth=2)
         ax.set_title("Beat Template")
         ax.set_xlabel("Time (ms)")
@@ -307,7 +325,9 @@ def plot_beat_template(
         # Identify key points (P-wave, R-peak, T-wave)
         p_wave_idx = np.argmax(template[: int(0.3 * len(template))])
         qrs_idx = np.argmax(np.abs(template))
-        t_wave_idx = len(template) - 1 - np.argmax(template[int(0.6 * len(template)) :][::-1])
+        t_wave_idx = (
+            len(template) - 1 - np.argmax(template[int(0.6 * len(template)) :][::-1])
+        )
         ax.plot(time[p_wave_idx], template[p_wave_idx], "go", label="P-wave")
         ax.plot(time[qrs_idx], template[qrs_idx], "ro", label="R-peak")
         ax.plot(time[t_wave_idx], template[t_wave_idx], "mo", label="T-wave")
@@ -321,6 +341,7 @@ def plot_beat_template(
     except Exception as e:
         logger.error(f"Error plotting beat template: {str(e)}")
         raise
+
 
 def plot_quality_metrics(
     signal: np.ndarray,
@@ -357,8 +378,12 @@ def plot_quality_metrics(
         for i in range(n_windows):
             window = signal[i * step : i * step + window_samples]
             snr[i] = _calculate_snr(window, fs)["SNR"]
-            baseline_wander[i] = _assess_baseline_wander(window, fs)["baseline_wander_severity"]
-            power_line_noise[i] = _calculate_power_line_noise(window, fs)["power_line_noise"]
+            baseline_wander[i] = _assess_baseline_wander(window, fs)[
+                "baseline_wander_severity"
+            ]
+            power_line_noise[i] = _calculate_power_line_noise(window, fs)[
+                "power_line_noise"
+            ]
 
         fig, axs = plt.subplots(3, 1, figsize=figsize, sharex=True)
         axs[0].plot(time_arr, snr)
@@ -378,6 +403,7 @@ def plot_quality_metrics(
         logger.error(f"Error plotting quality metrics: {str(e)}")
         raise
 
+
 def generate_analysis_report(
     signal: np.ndarray,
     fs: float,
@@ -390,30 +416,36 @@ def generate_analysis_report(
     """
     try:
         quality_section = ["Signal Quality Assessment", "----"]
-        quality_section.extend([
-            f"Overall Signal Quality: {quality_metrics.get('overall_quality', 0):.2f}",
-            f"Signal-to-Noise Ratio: {quality_metrics.get('SNR', 0):.1f} dB",
-            f"Baseline Stability: {'Stable' if quality_metrics.get('baseline_stable', False) else 'Unstable'}",
-            f"Power Line Interference: {'Present' if quality_metrics.get('powerline_interference_present', True) else 'Not Detected'}",
-        ])
+        quality_section.extend(
+            [
+                f"Overall Signal Quality: {quality_metrics.get('overall_quality', 0):.2f}",
+                f"Signal-to-Noise Ratio: {quality_metrics.get('SNR', 0):.1f} dB",
+                f"Baseline Stability: {'Stable' if quality_metrics.get('baseline_stable', False) else 'Unstable'}",
+                f"Power Line Interference: {'Present' if quality_metrics.get('powerline_interference_present', True) else 'Not Detected'}",
+            ]
+        )
 
         hrv_section = ["Heart Rate Variability Analysis", "----"]
         hr = features.get("Mean_HR", 0)
-        hrv_section.extend([
-            f"Mean Heart Rate: {hr:.1f} bpm",
-            f"SDNN: {features.get('SDNN', 0):.2f} ms",
-            f"RMSSD: {features.get('RMSSD', 0):.2f} ms",
-            f"pNN50: {features.get('pNN50', 0):.1f}%",
-            f"LF/HF Ratio: {features.get('LF_HF_ratio', 0):.2f}",
-        ])
+        hrv_section.extend(
+            [
+                f"Mean Heart Rate: {hr:.1f} bpm",
+                f"SDNN: {features.get('SDNN', 0):.2f} ms",
+                f"RMSSD: {features.get('RMSSD', 0):.2f} ms",
+                f"pNN50: {features.get('pNN50', 0):.1f}%",
+                f"LF/HF Ratio: {features.get('LF_HF_ratio', 0):.2f}",
+            ]
+        )
 
         morph_section = ["Morphological Analysis", "----"]
-        morph_section.extend([
-            f"QT Interval: {features.get('QT_interval', 0):.1f} ms",
-            f"QTc (Bazett): {features.get('QTc_Bazett', 0):.1f} ms",
-            f"PR Interval: {features.get('PR_interval', 0):.1f} ms",
-            f"QRS Duration: {features.get('QRS_duration', 0):.1f} ms",
-        ])
+        morph_section.extend(
+            [
+                f"QT Interval: {features.get('QT_interval', 0):.1f} ms",
+                f"QTc (Bazett): {features.get('QTc_Bazett', 0):.1f} ms",
+                f"PR Interval: {features.get('PR_interval', 0):.1f} ms",
+                f"QRS Duration: {features.get('QRS_duration', 0):.1f} ms",
+            ]
+        )
 
         stats_section = ["Statistical Summary", "----"]
         signal_stats = {
@@ -423,11 +455,13 @@ def generate_analysis_report(
             "Min": np.min(signal),
             "Range": np.ptp(signal),
         }
-        stats_section.extend([
-            f"Signal Mean: {signal_stats['Mean']:.2f}",
-            f"Signal Std: {signal_stats['Std']:.2f}",
-            f"Signal Range: {signal_stats['Range']:.2f}",
-        ])
+        stats_section.extend(
+            [
+                f"Signal Mean: {signal_stats['Mean']:.2f}",
+                f"Signal Std: {signal_stats['Std']:.2f}",
+                f"Signal Range: {signal_stats['Range']:.2f}",
+            ]
+        )
 
         clinical_section = ["Clinical Indicators", "----"]
         hr_status = "Normal"
@@ -440,24 +474,34 @@ def generate_analysis_report(
             st_status = "ST Elevation"
         elif features.get("ST_depression", False):
             st_status = "ST Depression"
-        clinical_section.extend([
-            f"Heart Rate Status: {hr_status}",
-            f"ST Segment Status: {st_status}",
-            f"T-Wave Alternans: {'Present' if features.get('TWA_present', False) else 'Not Detected'}",
-        ])
+        clinical_section.extend(
+            [
+                f"Heart Rate Status: {hr_status}",
+                f"ST Segment Status: {st_status}",
+                f"T-Wave Alternans: {'Present' if features.get('TWA_present', False) else 'Not Detected'}",
+            ]
+        )
 
         recommend_section = ["Recommendations", "----"]
         recommendations = []
         if quality_metrics.get("overall_quality", 0) < 0.6:
-            recommendations.append("- Improve signal quality for more reliable analysis")
+            recommendations.append(
+                "- Improve signal quality for more reliable analysis"
+            )
         if quality_metrics.get("baseline_wander_severity", 0) > 0.3:
-            recommendations.append("- Reduce patient movement to minimize baseline wander")
+            recommendations.append(
+                "- Reduce patient movement to minimize baseline wander"
+            )
         if quality_metrics.get("powerline_interference_present", False):
-            recommendations.append("- Check electrode connections and power line isolation")
+            recommendations.append(
+                "- Check electrode connections and power line isolation"
+            )
         if hr_status != "Normal":
             recommendations.append(f"- Monitor heart rate ({hr_status} detected)")
         if st_status != "Normal":
-            recommendations.append("- Further investigation of ST segment changes recommended")
+            recommendations.append(
+                "- Further investigation of ST segment changes recommended"
+            )
         if recommendations:
             recommend_section.extend(recommendations)
         else:
@@ -515,6 +559,7 @@ def test_plot_quality_metrics():
         print("Test passed: Save plot")
     except Exception as e:
         print(f"Test failed: Save plot - {str(e)}")
+
 
 if __name__ == "__main__":
     test_plot_quality_metrics()

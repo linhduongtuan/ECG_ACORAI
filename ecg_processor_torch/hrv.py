@@ -18,10 +18,13 @@ from typing import Dict, Tuple, List, Union
 from .config import ECGConfig
 from .visualization import plot_signal_comparison, plot_comprehensive_analysis
 
+
 # ---------------------------
 # Helper: Validate RR intervals
 # ---------------------------
-def validate_rr_intervals(rr_intervals: Union[np.ndarray, torch.Tensor]) -> torch.Tensor:
+def validate_rr_intervals(
+    rr_intervals: Union[np.ndarray, torch.Tensor],
+) -> torch.Tensor:
     """
     Validate and convert RR intervals to a torch tensor.
 
@@ -48,6 +51,7 @@ def validate_rr_intervals(rr_intervals: Union[np.ndarray, torch.Tensor]) -> torc
     if torch.any(rr_intervals > 3000) or torch.any(rr_intervals < 300):
         warnings.warn("Some RR intervals are outside physiological range (300-3000 ms)")
     return rr_intervals
+
 
 # ---------------------------
 # DFA calculation using Torch where possible
@@ -156,14 +160,15 @@ def calculate_dfa(
     r_squared = 1 - np.var(residuals) / np.var(log_fluct)
 
     return {
-        "alpha1": float(alpha1),                # Short-term scaling exponent
-        "alpha2": float(alpha2),                # Long-term scaling exponent
+        "alpha1": float(alpha1),  # Short-term scaling exponent
+        "alpha2": float(alpha2),  # Long-term scaling exponent
         "alpha_overall": float(alpha_overall),  # Overall scaling exponent
-        "r_squared": float(r_squared),          # Goodness-of-fit measure
+        "r_squared": float(r_squared),  # Goodness-of-fit measure
         "n_scales": len(valid_scales),
         "scales": valid_scales.tolist(),
         "fluctuations": fluctuations.tolist(),
     }
+
 
 # ---------------------------
 # Time Domain HRV Metrics using Torch
@@ -186,8 +191,10 @@ def calculate_time_domain_hrv(rr_intervals: Union[np.ndarray, torch.Tensor]) -> 
     rr_diff = rr_intervals[1:] - rr_intervals[:-1]
     mean_hr = 60000 / mean_rr  # Convert mean RR to beats per minute (BPM)
     sdnn = torch.std(rr_intervals, unbiased=True).item()
-    rmssd = torch.sqrt(torch.mean(rr_diff ** 2)).item()
-    pnn50 = (torch.sum(torch.abs(rr_diff) > 50).float() / rr_intervals.numel() * 100).item()
+    rmssd = torch.sqrt(torch.mean(rr_diff**2)).item()
+    pnn50 = (
+        torch.sum(torch.abs(rr_diff) > 50).float() / rr_intervals.numel() * 100
+    ).item()
     sdsd = torch.std(rr_diff, unbiased=True).item()
 
     return {
@@ -198,6 +205,7 @@ def calculate_time_domain_hrv(rr_intervals: Union[np.ndarray, torch.Tensor]) -> 
         "mean_rr": mean_rr.item(),
         "sdsd": sdsd,
     }
+
 
 # ---------------------------
 # Frequency Domain HRV Metrics (Mixed: using NumPy/SciPy)
@@ -229,12 +237,16 @@ def calculate_frequency_domain_hrv(
     if np.any(np.isnan(rr_interp)):
         raise ValueError("NaN values in interpolated signal")
     nperseg = min(256, len(rr_interp))
-    frequencies, psd = signal.welch(rr_interp, fs=fs, nperseg=nperseg, detrend="constant", scaling="density")
+    frequencies, psd = signal.welch(
+        rr_interp, fs=fs, nperseg=nperseg, detrend="constant", scaling="density"
+    )
     vlf_mask = (frequencies >= ECGConfig.VLF_LOW) & (frequencies < ECGConfig.VLF_HIGH)
     lf_mask = (frequencies >= ECGConfig.LF_LOW) & (frequencies < ECGConfig.LF_HIGH)
     hf_mask = (frequencies >= ECGConfig.HF_LOW) & (frequencies < ECGConfig.HF_HIGH)
 
-    vlf_power = trapezoid(psd[vlf_mask], frequencies[vlf_mask]) if np.any(vlf_mask) else 0
+    vlf_power = (
+        trapezoid(psd[vlf_mask], frequencies[vlf_mask]) if np.any(vlf_mask) else 0
+    )
     lf_power = trapezoid(psd[lf_mask], frequencies[lf_mask]) if np.any(lf_mask) else 0
     hf_power = trapezoid(psd[hf_mask], frequencies[hf_mask]) if np.any(hf_mask) else 0
     total_power = vlf_power + lf_power + hf_power
@@ -249,17 +261,22 @@ def calculate_frequency_domain_hrv(
         "total_power": float(total_power),
         "lf_nu": float(lf_nu),
         "hf_nu": float(hf_nu),
-        "peak_vlf": float(frequencies[vlf_mask][np.argmax(psd[vlf_mask])]) if np.any(vlf_mask) else 0.0,
-        "peak_lf": float(frequencies[lf_mask][np.argmax(psd[lf_mask])]) if np.any(lf_mask) else 0.0,
-        "peak_hf": float(frequencies[hf_mask][np.argmax(psd[hf_mask])]) if np.any(hf_mask) else 0.0,
+        "peak_vlf": float(frequencies[vlf_mask][np.argmax(psd[vlf_mask])])
+        if np.any(vlf_mask)
+        else 0.0,
+        "peak_lf": float(frequencies[lf_mask][np.argmax(psd[lf_mask])])
+        if np.any(lf_mask)
+        else 0.0,
+        "peak_hf": float(frequencies[hf_mask][np.argmax(psd[hf_mask])])
+        if np.any(hf_mask)
+        else 0.0,
     }
+
 
 # ---------------------------
 # Poincaré Metrics using NumPy (input conversion as needed)
 # ---------------------------
-def calculate_poincare_metrics(
-    rr_intervals: Union[np.ndarray, torch.Tensor]
-) -> Dict:
+def calculate_poincare_metrics(rr_intervals: Union[np.ndarray, torch.Tensor]) -> Dict:
     """
     Calculate Poincaré plot metrics (SD1, SD2, etc.).
 
@@ -277,7 +294,11 @@ def calculate_poincare_metrics(
     rr_n1 = rr_intervals[1:]
     diff_rr = rr_n1 - rr_n
     sd1 = np.sqrt(np.var(diff_rr, ddof=1) / 2) if len(diff_rr) > 0 else np.nan
-    sd2 = np.sqrt(2 * np.var(rr_intervals, ddof=1) - np.var(diff_rr, ddof=1) / 2) if len(rr_intervals) > 1 else np.nan
+    sd2 = (
+        np.sqrt(2 * np.var(rr_intervals, ddof=1) - np.var(diff_rr, ddof=1) / 2)
+        if len(rr_intervals) > 1
+        else np.nan
+    )
     area = np.pi * sd1 * sd2
     correlation = np.corrcoef(rr_n, rr_n1)[0, 1] if len(rr_n) > 1 else np.nan
 
@@ -288,6 +309,7 @@ def calculate_poincare_metrics(
         "ellipse_area": float(area),
         "energy_distribution_correlation": float(correlation),
     }
+
 
 # ---------------------------
 # Entropy Metrics (using NumPy)
@@ -308,13 +330,18 @@ def calculate_approximate_entropy(
     """
     N = len(rr_intervals)
     r_val = r * np.std(rr_intervals)
+
     def _maxdist(x_i, x_j):
         return max([abs(ua - va) for ua, va in zip(x_i, x_j)])
+
     def _phi(m):
         X = [rr_intervals[i : i + m] for i in range(N - m + 1)]
-        C = [len([1 for x_j in X if _maxdist(x_i, x_j) <= r_val]) / (N - m + 1.0)
-             for x_i in X]
+        C = [
+            len([1 for x_j in X if _maxdist(x_i, x_j) <= r_val]) / (N - m + 1.0)
+            for x_i in X
+        ]
         return (N - m + 1.0) ** (-1) * sum(np.log(C))
+
     return abs(_phi(m) - _phi(m + 1))
 
 
@@ -336,17 +363,22 @@ def calculate_sample_entropy(
         rr_intervals = np.array(rr_intervals)
     N = len(rr_intervals)
     if N < m + 2:
-        raise ValueError(f"Data length must be at least {m+2} for m={m}")
+        raise ValueError(f"Data length must be at least {m + 2} for m={m}")
     rr_normalized = (rr_intervals - np.mean(rr_intervals)) / np.std(rr_intervals)
     r_val = r * np.std(rr_intervals)
+
     def _count_matches(template_index, m):
         count = 0
         for i in range(N - m):
             if i != template_index:
-                diff = np.abs(rr_normalized[i : i + m] - rr_normalized[template_index : template_index + m])
+                diff = np.abs(
+                    rr_normalized[i : i + m]
+                    - rr_normalized[template_index : template_index + m]
+                )
                 if np.max(diff) <= r_val:
                     count += 1
         return count
+
     A = 0
     B = 0
     for i in range(N - m):
@@ -359,6 +391,7 @@ def calculate_sample_entropy(
     if not np.isfinite(sampen):
         raise ValueError("Failed to calculate sample entropy (result is not finite)")
     return sampen
+
 
 # ---------------------------
 # Non-linear HRV Metrics: Combining Poincaré, Entropy, and DFA
@@ -399,17 +432,22 @@ def calculate_non_linear_hrv(rr_intervals: Union[np.ndarray, torch.Tensor]) -> D
         dfa_metrics = calculate_dfa(rr_intervals)
         metrics.update(dfa_metrics)
     except Exception as e:
-        warnings.warn(f"Error calculating DFA metrics: {str(e)}. Setting DFA metrics to NaN.")
-        metrics.update({
-            "alpha1": np.nan,
-            "alpha2": np.nan,
-            "alpha_overall": np.nan,
-            "r_squared": np.nan,
-        })
+        warnings.warn(
+            f"Error calculating DFA metrics: {str(e)}. Setting DFA metrics to NaN."
+        )
+        metrics.update(
+            {
+                "alpha1": np.nan,
+                "alpha2": np.nan,
+                "alpha_overall": np.nan,
+                "r_squared": np.nan,
+            }
+        )
     scalar_metrics = [v for v in metrics.values() if np.isscalar(v)]
     if not any(np.isfinite(scalar_metrics)):
         raise ValueError("No finite scalar metrics computed")
     return metrics
+
 
 # ---------------------------
 # Complete HRV Metrics: Time, Frequency, and Non-linear
@@ -436,6 +474,7 @@ def calculate_complete_hrv(
         "non_linear": non_linear_metrics,
     }
 
+
 # ---------------------------
 # Advanced HRV Metrics (Time, Frequency, Non-linear)
 # ---------------------------
@@ -456,6 +495,7 @@ def _calculate_sdann(rr_intervals: np.ndarray, window: int = 300000) -> float:
         warnings.warn(f"Error in SDANN calculation: {str(e)}")
         raise
 
+
 def _calculate_sdnn_index(rr_intervals: np.ndarray, window: int = 300000) -> float:
     """Calculate SDNN index (mean of 5-min interval SDs)."""
     try:
@@ -472,6 +512,7 @@ def _calculate_sdnn_index(rr_intervals: np.ndarray, window: int = 300000) -> flo
     except Exception as e:
         warnings.warn(f"Error in SDNN index calculation: {str(e)}")
         raise
+
 
 def _calculate_time_domain_metrics(rr_intervals: np.ndarray) -> Dict:
     """Calculate time domain HRV metrics using NumPy."""
@@ -491,9 +532,8 @@ def _calculate_time_domain_metrics(rr_intervals: np.ndarray) -> Dict:
         warnings.warn(f"Error in time domain calculations: {str(e)}")
         raise
 
-def _calculate_frequency_domain_metrics(
-    rr_intervals: np.ndarray, fs: float
-) -> Dict:
+
+def _calculate_frequency_domain_metrics(rr_intervals: np.ndarray, fs: float) -> Dict:
     """Calculate frequency domain HRV metrics using NumPy/SciPy."""
     try:
         time_points = np.cumsum(rr_intervals) / 1000.0
@@ -501,14 +541,25 @@ def _calculate_frequency_domain_metrics(
         t_interp = np.arange(0, time_points[-1], 1 / f_interp)
         rr_interp = np.interp(t_interp, time_points, rr_intervals)
         nperseg = min(256, len(rr_interp))
-        frequencies, psd = signal.welch(rr_interp, fs=f_interp, nperseg=nperseg,
-                                        detrend="constant", scaling="density")
+        frequencies, psd = signal.welch(
+            rr_interp,
+            fs=f_interp,
+            nperseg=nperseg,
+            detrend="constant",
+            scaling="density",
+        )
         vlf_mask = (frequencies >= 0.003) & (frequencies < 0.04)
         lf_mask = (frequencies >= 0.04) & (frequencies < 0.15)
         hf_mask = (frequencies >= 0.15) & (frequencies < 0.4)
-        vlf_power = trapezoid(psd[vlf_mask], frequencies[vlf_mask]) if np.any(vlf_mask) else 0
-        lf_power = trapezoid(psd[lf_mask], frequencies[lf_mask]) if np.any(lf_mask) else 0
-        hf_power = trapezoid(psd[hf_mask], frequencies[hf_mask]) if np.any(hf_mask) else 0
+        vlf_power = (
+            trapezoid(psd[vlf_mask], frequencies[vlf_mask]) if np.any(vlf_mask) else 0
+        )
+        lf_power = (
+            trapezoid(psd[lf_mask], frequencies[lf_mask]) if np.any(lf_mask) else 0
+        )
+        hf_power = (
+            trapezoid(psd[hf_mask], frequencies[hf_mask]) if np.any(hf_mask) else 0
+        )
         total_power = vlf_power + lf_power + hf_power
         return {
             "VLF_power": float(vlf_power),
@@ -523,12 +574,17 @@ def _calculate_frequency_domain_metrics(
         warnings.warn(f"Error in frequency domain calculations: {str(e)}")
         raise
 
+
 def _calculate_nonlinear_metrics(rr_intervals: np.ndarray) -> Dict:
     """Calculate non-linear HRV metrics using NumPy."""
     try:
         diff_rr = np.diff(rr_intervals)
         sd1 = np.std(diff_rr) / np.sqrt(2) if len(diff_rr) > 0 else np.nan
-        sd2 = np.sqrt(2 * np.var(rr_intervals) - np.var(diff_rr) / 2) if len(rr_intervals) > 1 else np.nan
+        sd2 = (
+            np.sqrt(2 * np.var(rr_intervals) - np.var(diff_rr) / 2)
+            if len(rr_intervals) > 1
+            else np.nan
+        )
         try:
             sampen = calculate_sample_entropy(rr_intervals)
         except Exception:
@@ -551,7 +607,9 @@ def _calculate_nonlinear_metrics(rr_intervals: np.ndarray) -> Dict:
         return {
             "SD1": float(sd1),
             "SD2": float(sd2),
-            "SD1_SD2_ratio": float(sd1 / sd2) if (sd2 > 0 and np.isfinite(sd1)) else np.nan,
+            "SD1_SD2_ratio": float(sd1 / sd2)
+            if (sd2 > 0 and np.isfinite(sd1))
+            else np.nan,
             "SampEn": float(sampen),
             "ApEn": float(apen),
             "DFA_alpha1": float(dfa_alpha1),
@@ -560,6 +618,7 @@ def _calculate_nonlinear_metrics(rr_intervals: np.ndarray) -> Dict:
     except Exception as e:
         warnings.warn(f"Error in non-linear calculations: {str(e)}")
         return _get_default_nonlinear_metrics()
+
 
 def _get_default_time_metrics() -> Dict:
     return {
@@ -572,6 +631,7 @@ def _get_default_time_metrics() -> Dict:
         "STD_HR": np.nan,
     }
 
+
 def _get_default_freq_metrics() -> Dict:
     return {
         "VLF_power": np.nan,
@@ -583,6 +643,7 @@ def _get_default_freq_metrics() -> Dict:
         "HF_normalized": np.nan,
     }
 
+
 def _get_default_nonlinear_metrics() -> Dict:
     return {
         "SD1": np.nan,
@@ -593,6 +654,7 @@ def _get_default_nonlinear_metrics() -> Dict:
         "DFA_alpha1": np.nan,
         "DFA_alpha2": np.nan,
     }
+
 
 def calculate_advanced_hrv(
     rr_intervals: Union[np.ndarray, torch.Tensor], fs: float = 1000.0
@@ -635,6 +697,7 @@ def calculate_advanced_hrv(
         results.update(_get_default_nonlinear_metrics())
     return results
 
+
 # ---------------------------
 # Visualization: Poincaré Plot (remains largely unchanged)
 # ---------------------------
@@ -666,6 +729,7 @@ def plot_poincare(
     if show:
         plt.show()
     return fig, ax
+
 
 # ---------------------------
 # Approximate and Sample Entropy (using NumPy)

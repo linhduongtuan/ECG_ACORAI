@@ -17,6 +17,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 # ---------------------------------------------------------------------------
 # Helper Function: _calculate_power_band (remains mostly unchanged)
 # ---------------------------------------------------------------------------
@@ -40,13 +41,14 @@ def _calculate_power_band(
         logger.error(f"Error calculating power band: {str(e)}")
         return 0.0
 
+
 # ---------------------------------------------------------------------------
 # Main Function: calculate_signal_quality
 # ---------------------------------------------------------------------------
 def calculate_signal_quality(
     original: Union[np.ndarray, torch.Tensor],
     processed: Union[np.ndarray, torch.Tensor],
-    fs: float
+    fs: float,
 ) -> Dict:
     """
     Calculate comprehensive signal quality metrics for ECG signals.
@@ -69,7 +71,10 @@ def calculate_signal_quality(
     """
     try:
         # Input validation
-        if not (isinstance(original, (np.ndarray, torch.Tensor)) and isinstance(processed, (np.ndarray, torch.Tensor))):
+        if not (
+            isinstance(original, (np.ndarray, torch.Tensor))
+            and isinstance(processed, (np.ndarray, torch.Tensor))
+        ):
             raise ValueError("Signals must be numpy arrays or torch tensors")
         if not isinstance(fs, (int, float)) or fs <= 0:
             raise ValueError("Sampling frequency must be positive")
@@ -81,7 +86,9 @@ def calculate_signal_quality(
             processed = torch.tensor(processed, dtype=torch.float64)
 
         if original.shape != processed.shape:
-            raise ValueError(f"Signal shape mismatch: {original.shape} vs {processed.shape}")
+            raise ValueError(
+                f"Signal shape mismatch: {original.shape} vs {processed.shape}"
+            )
         if not torch.isfinite(original).all() or not torch.isfinite(processed).all():
             raise ValueError("Signals contain invalid values (inf or nan)")
         if original.numel() < fs:
@@ -91,23 +98,29 @@ def calculate_signal_quality(
 
         # 1. Signal-to-Noise Ratio and Power Metrics (use Torch)
         noise = original - processed
-        signal_rms = torch.sqrt(torch.mean(processed ** 2))
-        noise_rms = torch.sqrt(torch.mean(noise ** 2))
+        signal_rms = torch.sqrt(torch.mean(processed**2))
+        noise_rms = torch.sqrt(torch.mean(noise**2))
         epsilon = torch.finfo(torch.float64).eps
-        snr = 20 * torch.log10(signal_rms / (noise_rms + epsilon)) if noise_rms > epsilon else torch.tensor(100.0)
+        snr = (
+            20 * torch.log10(signal_rms / (noise_rms + epsilon))
+            if noise_rms > epsilon
+            else torch.tensor(100.0)
+        )
         power_metrics = {
             "snr": float(snr.item()),
             "signal_rms": float(signal_rms.item()),
             "noise_rms": float(noise_rms.item()),
-            "signal_power": float((signal_rms ** 2).item()),
-            "noise_power": float((noise_rms ** 2).item()),
+            "signal_power": float((signal_rms**2).item()),
+            "noise_power": float((noise_rms**2).item()),
         }
 
         # 2. Time Domain Statistical Metrics (compute using Torch)
         proc_mean = torch.mean(processed)
         proc_std = torch.std(processed, unbiased=False)
-        skewness = torch.mean((processed - proc_mean) ** 3) / (proc_std ** 3 + epsilon)
-        kurtosis = torch.mean((processed - proc_mean) ** 4) / (proc_std ** 4 + epsilon) - 3.0
+        skewness = torch.mean((processed - proc_mean) ** 3) / (proc_std**3 + epsilon)
+        kurtosis = (
+            torch.mean((processed - proc_mean) ** 4) / (proc_std**4 + epsilon) - 3.0
+        )
         ptp = (torch.max(processed) - torch.min(processed)).item()
         # Zero crossings: count sign changes using a boolean conversion.
         zeros = torch.sum(torch.abs(torch.diff((processed < 0).type(torch.int))))
@@ -165,7 +178,7 @@ def calculate_signal_quality(
         baseline_metrics = {
             "baseline_drift_linear": float(np.std(linear_detrend)),
             "baseline_drift_constant": float(np.std(constant_detrend)),
-            "baseline_power": float(np.sum(baseline ** 2)),
+            "baseline_power": float(np.sum(baseline**2)),
             "baseline_max_dev": float(np.max(np.abs(baseline))),
             "baseline_crossing_rate": float(np.mean(np.abs(np.diff(baseline > 0)))),
         }
@@ -176,11 +189,21 @@ def calculate_signal_quality(
         total_power = _calculate_power_band(freqs, psd, 0, fs / 2)
         epsilon_np = np.finfo(float).eps
         freq_metrics = {
-            "vlf_power": float(_calculate_power_band(freqs, psd, 0, 0.04) / total_power),
-            "lf_power": float(_calculate_power_band(freqs, psd, 0.04, 0.15) / total_power),
-            "hf_power": float(_calculate_power_band(freqs, psd, 0.15, 0.4) / total_power),
-            "line_noise": float(_calculate_power_band(freqs, psd, 45, 55) / total_power),
-            "high_freq_noise": float(_calculate_power_band(freqs, psd, 100, fs / 2) / total_power),
+            "vlf_power": float(
+                _calculate_power_band(freqs, psd, 0, 0.04) / total_power
+            ),
+            "lf_power": float(
+                _calculate_power_band(freqs, psd, 0.04, 0.15) / total_power
+            ),
+            "hf_power": float(
+                _calculate_power_band(freqs, psd, 0.15, 0.4) / total_power
+            ),
+            "line_noise": float(
+                _calculate_power_band(freqs, psd, 45, 55) / total_power
+            ),
+            "high_freq_noise": float(
+                _calculate_power_band(freqs, psd, 100, fs / 2) / total_power
+            ),
         }
         psd_norm = psd / np.sum(psd)
         spectral_entropy = -np.sum(psd_norm * np.log2(psd_norm + epsilon_np))
@@ -203,15 +226,21 @@ def calculate_signal_quality(
                 except Exception:
                     continue
             complexity_metrics = {
-                "entropy_mean": float(np.mean(entropy_values)) if entropy_values else np.nan,
-                "entropy_std": float(np.std(entropy_values)) if len(entropy_values) > 1 else np.nan,
+                "entropy_mean": float(np.mean(entropy_values))
+                if entropy_values
+                else np.nan,
+                "entropy_std": float(np.std(entropy_values))
+                if len(entropy_values) > 1
+                else np.nan,
             }
         else:
             complexity_metrics = {"entropy_mean": np.nan, "entropy_std": np.nan}
 
         # Combine all metrics and include a normalized quality score.
         # Here we normalize the quality score as snr/20 clipped to [0,1]
-        quality_score = float(np.clip(float(snr.item() if torch.is_tensor(snr) else snr) / 20.0, 0, 1))
+        quality_score = float(
+            np.clip(float(snr.item() if torch.is_tensor(snr) else snr) / 20.0, 0, 1)
+        )
         metrics = {
             **power_metrics,
             **statistical_metrics,
@@ -227,6 +256,7 @@ def calculate_signal_quality(
         logger.error(f"Error calculating signal quality: {str(e)}")
         raise
 
+
 def assess_signal_quality(signal: np.ndarray, fs: float) -> dict:
     """
     Assess the overall quality of an ECG signal.
@@ -240,7 +270,7 @@ def assess_signal_quality(signal: np.ndarray, fs: float) -> dict:
     try:
         snr = 10 * np.log10(np.var(signal) / np.var(signal - signal_mean))
     except ZeroDivisionError:
-        snr = float('nan')
+        snr = float("nan")
 
     # Define an overall quality score (this is just an example)
     overall_quality = 1.0 if snr > 10 else 0.5
@@ -250,10 +280,11 @@ def assess_signal_quality(signal: np.ndarray, fs: float) -> dict:
         "overall_quality": overall_quality,
         "SNR": snr,
         "powerline_interference_present": False,  # Placeholder
-        "baseline_wander_severity": 0.0  # Placeholder
+        "baseline_wander_severity": 0.0,  # Placeholder
     }
     return quality
-    
+
+
 # ---------------------------------------------------------------------------
 # Plotting Function (largely unchanged)
 # ---------------------------------------------------------------------------
@@ -336,10 +367,12 @@ def plot_signal_comparison(
         logger.error(f"Error plotting signal comparison: {str(e)}")
         raise
 
+
 # ---------------------------------------------------------------------------
 # (Other helper functions remain unchanged, for example: _detect_powerline_interference, _assess_rpeak_quality, etc.)
 # You may choose to leave them as NumPy/SciPy implementations.
 # ---------------------------------------------------------------------------
+
 
 # --- Test Function ---
 def test_calculate_signal_quality():
@@ -355,6 +388,7 @@ def test_calculate_signal_quality():
     for key, value in quality_metrics.items():
         print(f"{key}: {value}")
     plot_signal_comparison(original, processed, fs, title="Signal Quality Comparison")
+
 
 if __name__ == "__main__":
     test_calculate_signal_quality()

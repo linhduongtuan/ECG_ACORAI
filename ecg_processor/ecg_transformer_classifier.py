@@ -1,4 +1,5 @@
-# ecg_transformer_classifier.py
+# ecg_transformer_classifier_torch.py
+
 import math
 import torch
 import torch.nn as nn
@@ -15,6 +16,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+# Custom exceptions for configuration and input problems
 class TransformerConfigError(Exception):
     """Exception raised for errors in the Transformer configuration."""
 
@@ -30,22 +32,18 @@ class TransformerInputError(Exception):
 class PositionalEncoding(nn.Module):
     def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 5000):
         """
-        Implements the standard positional encoding as described in
-        'Attention Is All You Need'.
+        Implements positional encoding as described in 'Attention Is All You Need'.
 
         Parameters:
-        -----------
-        d_model : int
-            Embedding dimensionality
-        dropout : float, optional
-            Dropout probability, by default 0.1
-        max_len : int, optional
-            Maximum supported input sequence length, by default 5000
+          d_model : int
+              Embedding dimensionality.
+          dropout : float, optional
+              Dropout probability, by default 0.1.
+          max_len : int, optional
+              Maximum supported input sequence length, by default 5000.
 
         Raises:
-        -------
-        TransformerConfigError
-            If parameters are invalid
+          TransformerConfigError: If any parameters are invalid.
         """
         if d_model <= 0:
             raise TransformerConfigError(f"d_model must be positive, got {d_model}")
@@ -57,10 +55,8 @@ class PositionalEncoding(nn.Module):
         super(PositionalEncoding, self).__init__()
         self.dropout = nn.Dropout(p=dropout)
 
-        # Create a constant 'pe' matrix with values dependent on position and i
         pe = torch.zeros(max_len, d_model)
         position = torch.arange(0, max_len, dtype=torch.float32).unsqueeze(1)
-        # Use exponential decay for even and odd indices
         div_term = torch.exp(
             torch.arange(0, d_model, 2, dtype=torch.float32)
             * (-math.log(10000.0) / d_model)
@@ -68,46 +64,34 @@ class PositionalEncoding(nn.Module):
         pe[:, 0::2] = torch.sin(position * div_term)  # even indices
         pe[:, 1::2] = torch.cos(position * div_term)  # odd indices
         pe = pe.unsqueeze(0)  # shape: (1, max_len, d_model)
-        self.register_buffer("pe", pe)  # not a learnable parameter
+        self.register_buffer("pe", pe)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Add positional encodings to the input tensor.
 
         Parameters:
-        -----------
-        x : torch.Tensor
-            Input tensor of shape (batch_size, seq_len, d_model)
+          x : torch.Tensor
+              Input tensor of shape (batch_size, seq_len, d_model).
 
         Returns:
-        --------
-        torch.Tensor
-            Tensor with positional encodings added
+          torch.Tensor with positional encoding added (and dropout applied).
 
         Raises:
-        -------
-        TransformerInputError
-            If input tensor has incorrect shape or dimensions
+          TransformerInputError: If input tensor shape is invalid.
         """
-        try:
-            if x.dim() != 3:
-                raise TransformerInputError(f"Expected 3D input tensor, got {x.dim()}D")
-            if x.size(2) != self.pe.size(2):
-                raise TransformerInputError(
-                    f"Input feature dim {x.size(2)} doesn't match positional encoding dim {self.pe.size(2)}"
-                )
-            if x.size(1) > self.pe.size(1):
-                raise TransformerInputError(
-                    f"Input sequence length {x.size(1)} exceeds maximum length {self.pe.size(1)}"
-                )
-
-            x = x + self.pe[:, : x.size(1)]
-            return self.dropout(x)
-        except Exception as e:
-            if not isinstance(e, TransformerInputError):
-                logger.error(f"Error in positional encoding forward pass: {str(e)}")
-                raise TransformerInputError(f"Forward pass failed: {str(e)}")
-            raise
+        if x.dim() != 3:
+            raise TransformerInputError(f"Expected 3D input tensor, got {x.dim()}D")
+        if x.size(2) != self.pe.size(2):
+            raise TransformerInputError(
+                f"Input feature dim {x.size(2)} doesn't match positional encoding dim {self.pe.size(2)}"
+            )
+        if x.size(1) > self.pe.size(1):
+            raise TransformerInputError(
+                f"Input sequence length {x.size(1)} exceeds maximum length {self.pe.size(1)}"
+            )
+        x = x + self.pe[:, : x.size(1)]
+        return self.dropout(x)
 
 
 class ECGTransformerClassifier(nn.Module):
@@ -124,26 +108,22 @@ class ECGTransformerClassifier(nn.Module):
         Transformer-based classifier for ECG time-series.
 
         Parameters:
-        -----------
-        input_length : int
-            Length of the input ECG sequence
-        d_model : int, optional
-            Dimensionality of the embedding space, by default 64
-        nhead : int, optional
-            Number of attention heads, by default 4
-        num_layers : int, optional
-            Number of transformer encoder layers, by default 2
-        num_classes : int, optional
-            Number of output classes, by default 2
-        dropout : float, optional
-            Dropout rate, by default 0.1
+          input_length : int
+              Length of the input ECG sequence.
+          d_model : int, optional
+              Dimensionality of the embedding space, default is 64.
+          nhead : int, optional
+              Number of attention heads, default is 4.
+          num_layers : int, optional
+              Number of transformer encoder layers, default is 2.
+          num_classes : int, optional
+              Number of output classes, default is 2.
+          dropout : float, optional
+              Dropout rate, default is 0.1.
 
         Raises:
-        -------
-        TransformerConfigError
-            If any parameters are invalid
+          TransformerConfigError: If any parameters are invalid.
         """
-        # Validate parameters
         if input_length <= 0:
             raise TransformerConfigError(
                 f"input_length must be positive, got {input_length}"
@@ -171,22 +151,19 @@ class ECGTransformerClassifier(nn.Module):
         self.input_length = input_length
         self.d_model = d_model
 
-        # Embedding layer: map each scalar in the input to a d_model dimensional vector.
+        # Map each scalar input to a d_model-dimensional embedding.
         self.embedding = nn.Linear(1, d_model)
-
-        # Positional encoding to inject sequence order information.
+        # Add positional encoding.
         self.positional_encoding = PositionalEncoding(
             d_model, dropout=dropout, max_len=input_length
         )
-
-        # Transformer encoder layers.
+        # Transformer encoder: using batch_first=True for input shape (batch, seq_len, d_model)
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=d_model, nhead=nhead, dropout=dropout, batch_first=True
         )
         self.transformer_encoder = nn.TransformerEncoder(
             encoder_layer, num_layers=num_layers
         )
-
         # Final classification layer.
         self.fc = nn.Linear(d_model, num_classes)
 
@@ -195,29 +172,24 @@ class ECGTransformerClassifier(nn.Module):
         Forward pass.
 
         Expected input shape:
-          x: Tensor of shape (batch_size, seq_len)
+          x: Tensor of shape (batch_size, seq_len) or (batch_size, seq_len, 1).
 
         Returns:
-          Logits of shape (batch_size, num_classes)
+          Logits of shape (batch_size, num_classes).
         """
-        # Add a channel dimension: (batch, seq_len) -> (batch, seq_len, 1)
+        # If input is (batch, seq_len), add a channel dimension.
         if x.dim() == 2:
             x = x.unsqueeze(-1)
-
-        # Embed the input.
-        x = self.embedding(x)  # (batch, seq_len, d_model)
-
+        # Embed the input; shape becomes (batch, seq_len, d_model)
+        x = self.embedding(x)
         # Add positional encoding.
-        x = self.positional_encoding(x)  # (batch, seq_len, d_model)
-
-        # Process the sequence with the transformer encoder.
-        x = self.transformer_encoder(x)  # (batch, seq_len, d_model)
-
-        # Aggregate the sequence (e.g., average pooling) to obtain a single feature vector per sample.
-        x = x.mean(dim=1)  # (batch, d_model)
-
+        x = self.positional_encoding(x)
+        # Process through the transformer encoder.
+        x = self.transformer_encoder(x)
+        # Aggregate over the sequence dimension (here, via mean pooling).
+        x = x.mean(dim=1)
         # Final classification.
-        logits = self.fc(x)  # (batch, num_classes)
+        logits = self.fc(x)
         return logits
 
 
@@ -246,10 +218,10 @@ def train_transformer_classifier(
       learning_rate: Optimizer learning rate.
 
     Returns:
-      History dictionary containing training (and optional validation) loss.
+      History dictionary containing training (and optional validation) loss and accuracy.
     """
     try:
-        # Input validation
+        # Input validation for training data
         if not isinstance(x_train, np.ndarray) or not isinstance(y_train, np.ndarray):
             raise TransformerInputError("Training data must be numpy arrays")
         if len(x_train) != len(y_train):
@@ -258,10 +230,8 @@ def train_transformer_classifier(
             )
         if not np.isfinite(x_train).all():
             raise TransformerInputError("x_train contains invalid values (inf or nan)")
-        if not np.isfinite(y_train).all():
-            raise TransformerInputError("y_train contains invalid values (inf or nan)")
 
-        # Validate hyperparameters
+        # Hyperparameter validation
         if epochs <= 0:
             raise TransformerConfigError(f"epochs must be positive, got {epochs}")
         if batch_size <= 0:
@@ -273,11 +243,12 @@ def train_transformer_classifier(
                 f"learning_rate must be positive, got {learning_rate}"
             )
 
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        device = torch.device("cuda" if torch.cuda.is_available() else "mps")
         logger.info(f"Using device: {device}")
         model.to(device)
 
-        # Ensure training data is of shape (num_samples, input_length)
+        # Ensure training data is of shape (num_samples, input_length).
+        # If provided as (num_samples, input_length, 1), squeeze the last dimension.
         if x_train.ndim == 3:
             x_train = x_train.squeeze(-1)
         elif x_train.ndim != 2:
@@ -285,7 +256,6 @@ def train_transformer_classifier(
                 f"x_train must be 2D or 3D, got {x_train.ndim}D"
             )
 
-        # Validate input dimensions
         if x_train.shape[1] != model.input_length:
             raise TransformerInputError(
                 f"Input length {x_train.shape[1]} doesn't match model input length {model.input_length}"
@@ -293,28 +263,21 @@ def train_transformer_classifier(
 
         x_train_tensor = torch.tensor(x_train, dtype=torch.float32)
         y_train_tensor = torch.tensor(y_train, dtype=torch.long)
-
         train_dataset = TensorDataset(x_train_tensor, y_train_tensor)
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-        history = {"train_loss": [], "train_acc": [], "val_loss": [], "val_acc": []}
+        history = {"train_loss": [], "train_acc": []}
         best_val_loss = float("inf")
         patience_counter = 0
 
         if x_val is not None and y_val is not None:
-            # Validate validation data
             if len(x_val) != len(y_val):
                 raise TransformerInputError(
                     f"Length mismatch: x_val ({len(x_val)}) != y_val ({len(y_val)})"
                 )
-            if not np.isfinite(x_val).all():
-                raise TransformerInputError("x_val contains invalid values")
-            if not np.isfinite(y_val).all():
-                raise TransformerInputError("y_val contains invalid values")
-
             if x_val.ndim == 3:
                 x_val = x_val.squeeze(-1)
             elif x_val.ndim != 2:
@@ -332,36 +295,30 @@ def train_transformer_classifier(
             val_dataset = TensorDataset(x_val_tensor, y_val_tensor)
             val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
+            history["val_loss"] = []
+            history["val_acc"] = []
+
         for epoch in range(epochs):
             model.train()
             epoch_loss = 0.0
             correct = 0
             total = 0
 
-            # Training loop
             for batch_x, batch_y in train_loader:
-                try:
-                    batch_x, batch_y = batch_x.to(device), batch_y.to(device)
-                    optimizer.zero_grad()
-                    outputs = model(batch_x)
-                    loss = criterion(outputs, batch_y)
-                    loss.backward()
+                batch_x, batch_y = batch_x.to(device), batch_y.to(device)
+                optimizer.zero_grad()
+                outputs = model(batch_x)
+                loss = criterion(outputs, batch_y)
+                loss.backward()
 
-                    # Gradient clipping
-                    torch.nn.utils.clip_grad_norm_(
-                        model.parameters(), gradient_clip_val
-                    )
-                    optimizer.step()
+                # Gradient clipping to keep training stable
+                torch.nn.utils.clip_grad_norm_(model.parameters(), gradient_clip_val)
+                optimizer.step()
 
-                    # Calculate accuracy
-                    _, predicted = torch.max(outputs.data, 1)
-                    total += batch_y.size(0)
-                    correct += (predicted == batch_y).sum().item()
-                    epoch_loss += loss.item() * batch_x.size(0)
-
-                except Exception as e:
-                    logger.error(f"Error in training batch: {str(e)}")
-                    raise TransformerInputError(f"Training failed: {str(e)}")
+                epoch_loss += loss.item() * batch_x.size(0)
+                _, predicted = torch.max(outputs, 1)
+                total += batch_y.size(0)
+                correct += (predicted == batch_y).sum().item()
 
             epoch_loss /= len(train_dataset)
             epoch_acc = 100 * correct / total
@@ -371,36 +328,26 @@ def train_transformer_classifier(
             if x_val is not None and y_val is not None:
                 model.eval()
                 val_loss = 0.0
-                correct = 0
-                total = 0
-
+                correct_val = 0
+                total_val = 0
                 with torch.no_grad():
                     for batch_x, batch_y in val_loader:
-                        try:
-                            batch_x, batch_y = batch_x.to(device), batch_y.to(device)
-                            outputs = model(batch_x)
-                            loss = criterion(outputs, batch_y)
-
-                            # Calculate accuracy
-                            _, predicted = torch.max(outputs.data, 1)
-                            total += batch_y.size(0)
-                            correct += (predicted == batch_y).sum().item()
-                            val_loss += loss.item() * batch_x.size(0)
-
-                        except Exception as e:
-                            logger.error(f"Error in validation batch: {str(e)}")
-                            raise TransformerInputError(f"Validation failed: {str(e)}")
-
+                        batch_x, batch_y = batch_x.to(device), batch_y.to(device)
+                        outputs = model(batch_x)
+                        loss = criterion(outputs, batch_y)
+                        val_loss += loss.item() * batch_x.size(0)
+                        _, predicted = torch.max(outputs, 1)
+                        total_val += batch_y.size(0)
+                        correct_val += (predicted == batch_y).sum().item()
                 val_loss /= len(val_dataset)
-                val_acc = 100 * correct / total
+                val_acc = 100 * correct_val / total_val
                 history["val_loss"].append(val_loss)
                 history["val_acc"].append(val_acc)
 
-                # Early stopping
                 if val_loss < best_val_loss:
                     best_val_loss = val_loss
                     patience_counter = 0
-                    # Save best model state here if needed
+                    # Optionally save best model state here.
                 else:
                     patience_counter += 1
                     if patience_counter >= early_stopping_patience:
@@ -416,15 +363,13 @@ def train_transformer_classifier(
                 )
             else:
                 logger.info(
-                    f"Epoch {epoch + 1}/{epochs} - "
-                    f"Train Loss: {epoch_loss:.4f}, Train Acc: {epoch_acc:.2f}%"
+                    f"Epoch {epoch + 1}/{epochs} - Train Loss: {epoch_loss:.4f}, Train Acc: {epoch_acc:.2f}%"
                 )
+        return history
 
     except Exception as e:
         logger.error(f"Training failed: {str(e)}")
-        raise
-
-    return history
+        raise TransformerInputError(f"Training failed: {str(e)}")
 
 
 def predict_transformer(
@@ -434,29 +379,17 @@ def predict_transformer(
     Predict classes for given ECG time-series data using the trained transformer classifier.
 
     Parameters:
-    -----------
-    model : ECGTransformerClassifier
-        Trained transformer model
-    x : np.ndarray
-        Input data of shape (num_samples, input_length) or (num_samples, input_length, 1)
-    return_probabilities : bool, optional
-        If True, returns both predictions and probabilities, by default False
+      model : ECGTransformerClassifier
+          Trained transformer model.
+      x : np.ndarray
+          Input data of shape (num_samples, input_length) or (num_samples, input_length, 1).
+      return_probabilities : bool, optional
+          If True, returns both predictions and probabilities.
 
     Returns:
-    --------
-    Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]
-        If return_probabilities is False:
-            Array of predicted class labels
-        If return_probabilities is True:
-            Tuple of (predictions, probabilities)
-
-    Raises:
-    -------
-    TransformerInputError
-        If input data has invalid shape or values
+      Either an array of predicted class labels or a tuple (predictions, probabilities).
     """
     try:
-        # Input validation
         if not isinstance(x, np.ndarray):
             raise TransformerInputError("Input must be a numpy array")
         if not np.isfinite(x).all():
@@ -466,25 +399,22 @@ def predict_transformer(
         model.to(device)
         model.eval()
 
-        # Prepare input
+        # Ensure input shape is (num_samples, input_length)
         if x.ndim == 3:
             x = x.squeeze(-1)
         elif x.ndim != 2:
             raise TransformerInputError(f"Input must be 2D or 3D, got {x.ndim}D")
 
-        # Validate dimensions
         if x.shape[1] != model.input_length:
             raise TransformerInputError(
                 f"Input length {x.shape[1]} doesn't match model input length {model.input_length}"
             )
 
         x_tensor = torch.tensor(x, dtype=torch.float32).to(device)
-
         with torch.no_grad():
             outputs = model(x_tensor)
             probabilities = torch.softmax(outputs, dim=1)
             predictions = torch.argmax(outputs, dim=1)
-
         if return_probabilities:
             return predictions.cpu().numpy(), probabilities.cpu().numpy()
         return predictions.cpu().numpy()
@@ -494,12 +424,11 @@ def predict_transformer(
         raise TransformerInputError(f"Prediction failed: {str(e)}")
 
 
-# Example usage (this portion can be removed or placed in a separate training script):
-
+# Example usage:
 if __name__ == "__main__":
-    # Dummy data for illustration:
+    # Create dummy training data:
     num_samples = 1000
-    input_length = 5000  # length of each ECG segment
+    input_length = 5000  # Each ECG segment
     x_train = np.random.rand(num_samples, input_length).astype(np.float32)
     y_train = np.random.randint(0, 2, size=(num_samples,))
 
@@ -513,13 +442,13 @@ if __name__ == "__main__":
         dropout=0.1,
     )
 
-    # Train
+    # Train the model (for a few epochs for demonstration)
     print("Training the Transformer-based ECG classifier...")
     history = train_transformer_classifier(
         model, x_train, y_train, epochs=10, batch_size=32, learning_rate=0.001
     )
 
-    # Predict on new dummy data
+    # Predict on new dummy test data:
     x_test = np.random.rand(10, input_length).astype(np.float32)
     preds = predict_transformer(model, x_test)
     print("Predictions:", preds)

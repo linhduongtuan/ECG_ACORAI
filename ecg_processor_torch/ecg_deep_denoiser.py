@@ -20,18 +20,25 @@ logger = logging.getLogger(__name__)
 # Custom exceptions
 class DenoiserError(Exception):
     """Base exception class for ECG Denoiser errors."""
+
     pass
+
 
 class DenoiserConfigError(DenoiserError):
     """Exception raised for errors in the Denoiser configuration."""
+
     pass
+
 
 class DenoiserInputError(DenoiserError):
     """Exception raised for errors in the input data."""
+
     pass
 
 
-def pad_to_multiple(signal: Union[np.ndarray, torch.Tensor], multiple: int) -> Tuple[Union[np.ndarray, torch.Tensor], int]:
+def pad_to_multiple(
+    signal: Union[np.ndarray, torch.Tensor], multiple: int
+) -> Tuple[Union[np.ndarray, torch.Tensor], int]:
     """
     Pad a 1D signal so that its length is a multiple of 'multiple'.
 
@@ -60,7 +67,9 @@ def pad_to_multiple(signal: Union[np.ndarray, torch.Tensor], multiple: int) -> T
         if not (isinstance(signal, np.ndarray) or isinstance(signal, torch.Tensor)):
             raise DenoiserInputError("Signal must be a numpy array or torch.Tensor")
         if not isinstance(multiple, int) or multiple <= 0:
-            raise DenoiserInputError(f"Multiple must be a positive integer, got {multiple}")
+            raise DenoiserInputError(
+                f"Multiple must be a positive integer, got {multiple}"
+            )
 
         # Work with NumPy if needed:
         if isinstance(signal, np.ndarray):
@@ -83,7 +92,9 @@ def pad_to_multiple(signal: Union[np.ndarray, torch.Tensor], multiple: int) -> T
                 return signal, 0
             pad_width = multiple - remainder
             # F.pad expects the padding tuple (pad_left, pad_right)
-            padded_signal = F.pad(signal.unsqueeze(0), (0, pad_width), mode="constant", value=0).squeeze(0)
+            padded_signal = F.pad(
+                signal.unsqueeze(0), (0, pad_width), mode="constant", value=0
+            ).squeeze(0)
             return padded_signal, pad_width
 
     except Exception as e:
@@ -91,7 +102,9 @@ def pad_to_multiple(signal: Union[np.ndarray, torch.Tensor], multiple: int) -> T
         raise DenoiserInputError(f"Padding failed: {str(e)}")
 
 
-def crop_to_length(signal: Union[np.ndarray, torch.Tensor], original_length: int) -> Union[np.ndarray, torch.Tensor]:
+def crop_to_length(
+    signal: Union[np.ndarray, torch.Tensor], original_length: int
+) -> Union[np.ndarray, torch.Tensor]:
     """
     Crop a signal to the given original length.
 
@@ -115,11 +128,15 @@ def crop_to_length(signal: Union[np.ndarray, torch.Tensor], original_length: int
         if not (isinstance(signal, np.ndarray) or isinstance(signal, torch.Tensor)):
             raise DenoiserInputError("Signal must be a numpy array or torch.Tensor")
         if not isinstance(original_length, int) or original_length <= 0:
-            raise DenoiserInputError(f"Original length must be positive, got {original_length}")
+            raise DenoiserInputError(
+                f"Original length must be positive, got {original_length}"
+            )
 
         length = signal.shape[0] if isinstance(signal, np.ndarray) else signal.size(0)
         if original_length > length:
-            raise DenoiserInputError(f"Original length {original_length} exceeds signal length {length}")
+            raise DenoiserInputError(
+                f"Original length {original_length} exceeds signal length {length}"
+            )
 
         if isinstance(signal, np.ndarray):
             if not np.isfinite(signal).all():
@@ -139,6 +156,7 @@ def crop_to_length(signal: Union[np.ndarray, torch.Tensor], original_length: int
 # Model definitions
 # **********************
 
+
 class ConvAutoencoder(nn.Module):
     """
     Convolutional Autoencoder for ECG signal denoising.
@@ -146,9 +164,12 @@ class ConvAutoencoder(nn.Module):
     It compresses the input via an encoder and then reconstructs using a decoder.
     Batch normalization, dropout, and skip connections improve training.
     """
+
     def __init__(self, dropout_rate: float = 0.1):
         if not 0 <= dropout_rate < 1:
-            raise DenoiserConfigError(f"Dropout rate must be in [0,1), got {dropout_rate}")
+            raise DenoiserConfigError(
+                f"Dropout rate must be in [0,1), got {dropout_rate}"
+            )
         super(ConvAutoencoder, self).__init__()
 
         # Encoder
@@ -173,22 +194,34 @@ class ConvAutoencoder(nn.Module):
         # Decoder
         self.decoder = nn.Sequential(
             nn.ConvTranspose1d(
-                in_channels=8, out_channels=8,
-                kernel_size=3, stride=2, padding=1, output_padding=1
+                in_channels=8,
+                out_channels=8,
+                kernel_size=3,
+                stride=2,
+                padding=1,
+                output_padding=1,
             ),
             nn.BatchNorm1d(8),
             nn.ReLU(inplace=True),
             nn.Dropout(dropout_rate),
             nn.ConvTranspose1d(
-                in_channels=8, out_channels=8,
-                kernel_size=3, stride=2, padding=1, output_padding=1
+                in_channels=8,
+                out_channels=8,
+                kernel_size=3,
+                stride=2,
+                padding=1,
+                output_padding=1,
             ),
             nn.BatchNorm1d(8),
             nn.ReLU(inplace=True),
             nn.Dropout(dropout_rate),
             nn.ConvTranspose1d(
-                in_channels=8, out_channels=16,
-                kernel_size=3, stride=2, padding=1, output_padding=1
+                in_channels=8,
+                out_channels=16,
+                kernel_size=3,
+                stride=2,
+                padding=1,
+                output_padding=1,
             ),
             nn.BatchNorm1d(16),
             nn.ReLU(inplace=True),
@@ -202,7 +235,9 @@ class ConvAutoencoder(nn.Module):
             if x.dim() != 3:
                 raise DenoiserInputError(f"Expected 3D input tensor, got {x.dim()}D")
             if x.size(1) != 1:
-                raise DenoiserInputError(f"Expected 1 channel, got {x.size(1)} channels")
+                raise DenoiserInputError(
+                    f"Expected 1 channel, got {x.size(1)} channels"
+                )
             if not torch.isfinite(x).all():
                 raise DenoiserInputError("Input contains invalid values (inf or nan)")
 
@@ -218,14 +253,23 @@ class ECGDeepDenoiser:
     """
     Deep-learning ECG signal denoiser using a convolutional autoencoder.
     """
-    def __init__(self, input_length: int, learning_rate: float = 0.001, dropout_rate: float = 0.1):
+
+    def __init__(
+        self, input_length: int, learning_rate: float = 0.001, dropout_rate: float = 0.1
+    ):
         try:
             if not isinstance(input_length, int) or input_length <= 0:
-                raise DenoiserConfigError(f"Input length must be positive integer, got {input_length}")
+                raise DenoiserConfigError(
+                    f"Input length must be positive integer, got {input_length}"
+                )
             if not isinstance(learning_rate, float) or learning_rate <= 0:
-                raise DenoiserConfigError(f"Learning rate must be positive float, got {learning_rate}")
+                raise DenoiserConfigError(
+                    f"Learning rate must be positive float, got {learning_rate}"
+                )
             if not 0 <= dropout_rate < 1:
-                raise DenoiserConfigError(f"Dropout rate must be in [0,1), got {dropout_rate}")
+                raise DenoiserConfigError(
+                    f"Dropout rate must be in [0,1), got {dropout_rate}"
+                )
 
             self.input_length = input_length
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -261,9 +305,13 @@ class ECGDeepDenoiser:
             if epochs <= 0:
                 raise DenoiserConfigError(f"epochs must be positive, got {epochs}")
             if batch_size <= 0:
-                raise DenoiserConfigError(f"batch_size must be positive, got {batch_size}")
+                raise DenoiserConfigError(
+                    f"batch_size must be positive, got {batch_size}"
+                )
             if not 0 < validation_split < 1:
-                raise DenoiserConfigError(f"validation_split must be in (0,1), got {validation_split}")
+                raise DenoiserConfigError(
+                    f"validation_split must be in (0,1), got {validation_split}"
+                )
 
             logger.info(f"Starting training with {len(x_train)} samples")
 
@@ -291,7 +339,9 @@ class ECGDeepDenoiser:
             train_dataset = TensorDataset(train_tensor)
             val_dataset = TensorDataset(val_tensor)
 
-            train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+            train_loader = DataLoader(
+                train_dataset, batch_size=batch_size, shuffle=True
+            )
             val_loader = DataLoader(val_dataset, batch_size=batch_size)
 
             history = {"train_loss": [], "val_loss": [], "train_mse": [], "val_mse": []}
@@ -309,15 +359,17 @@ class ECGDeepDenoiser:
                     outputs = self.model(inputs)
 
                     # Crop to original length along the time axis
-                    outputs_cropped = outputs[:, :, :self.input_length]
-                    inputs_cropped = inputs[:, :, :self.input_length]
+                    outputs_cropped = outputs[:, :, : self.input_length]
+                    inputs_cropped = inputs[:, :, : self.input_length]
 
                     loss = self.criterion(outputs_cropped, inputs_cropped)
                     mse = nn.MSELoss(reduction="mean")(outputs_cropped, inputs_cropped)
 
                     self.optimizer.zero_grad()
                     loss.backward()
-                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), gradient_clip_val)
+                    torch.nn.utils.clip_grad_norm_(
+                        self.model.parameters(), gradient_clip_val
+                    )
                     self.optimizer.step()
 
                     train_loss += loss.item()
@@ -335,11 +387,13 @@ class ECGDeepDenoiser:
                         inputs = batch[0]
                         outputs = self.model(inputs)
 
-                        outputs_cropped = outputs[:, :, :self.input_length]
-                        inputs_cropped = inputs[:, :, :self.input_length]
+                        outputs_cropped = outputs[:, :, : self.input_length]
+                        inputs_cropped = inputs[:, :, : self.input_length]
 
                         loss = self.criterion(outputs_cropped, inputs_cropped)
-                        mse = nn.MSELoss(reduction="mean")(outputs_cropped, inputs_cropped)
+                        mse = nn.MSELoss(reduction="mean")(
+                            outputs_cropped, inputs_cropped
+                        )
                         val_loss += loss.item()
                         val_mse += mse.item()
                         n_val_batches += 1
@@ -376,7 +430,6 @@ class ECGDeepDenoiser:
             logger.error(f"Training failed: {str(e)}")
             raise DenoiserInputError(f"Training failed: {str(e)}")
 
-
     def denoise(
         self,
         signal: np.ndarray,
@@ -396,7 +449,9 @@ class ECGDeepDenoiser:
             if not np.isfinite(signal).all():
                 raise DenoiserInputError("Input contains invalid values")
             if batch_size is not None and batch_size <= 0:
-                raise DenoiserConfigError(f"batch_size must be positive, got {batch_size}")
+                raise DenoiserConfigError(
+                    f"batch_size must be positive, got {batch_size}"
+                )
 
             self.model.eval()
             logger.info("Starting denoising process")
@@ -419,13 +474,16 @@ class ECGDeepDenoiser:
                 padded_batch = np.array(padded_batch)
                 padded_batch = np.expand_dims(padded_batch, axis=1)
 
-                batch_tensor = torch.tensor(padded_batch, dtype=torch.float32).to(self.device)
+                batch_tensor = torch.tensor(padded_batch, dtype=torch.float32).to(
+                    self.device
+                )
 
                 with torch.no_grad():
                     output_tensor = self.model(batch_tensor)
                     if return_reconstruction_error:
                         error = nn.MSELoss(reduction="mean")(
-                            output_tensor[:, :, :self.input_length], batch_tensor[:, :, :self.input_length]
+                            output_tensor[:, :, : self.input_length],
+                            batch_tensor[:, :, : self.input_length],
                         ).item()
                         reconstruction_errors.append(error)
 
@@ -452,10 +510,12 @@ class ECGDeepDenoiser:
 # Additional autoencoder for anomaly detection
 # ******************************
 
+
 class ECGAutoencoder(nn.Module):
     """
     Fully connected autoencoder for ECG signal reconstruction and feature learning.
     """
+
     def __init__(self, input_size: int = 512, latent_dim: int = 32):
         super().__init__()
         # Encoder layers
@@ -502,7 +562,13 @@ class ECGAnomalyDetector:
     """
     Anomaly detection based on an autoencoder.
     """
-    def __init__(self, input_size: int = 512, latent_dim: int = 32, threshold_percentile: float = 95):
+
+    def __init__(
+        self,
+        input_size: int = 512,
+        latent_dim: int = 32,
+        threshold_percentile: float = 95,
+    ):
         self.autoencoder = ECGAutoencoder(input_size, latent_dim)
         self.threshold = None
         self.threshold_percentile = threshold_percentile
@@ -510,7 +576,13 @@ class ECGAnomalyDetector:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.autoencoder.to(self.device)
 
-    def fit(self, X: np.ndarray, epochs: int = 100, batch_size: int = 32, learning_rate: float = 0.001) -> dict:
+    def fit(
+        self,
+        X: np.ndarray,
+        epochs: int = 100,
+        batch_size: int = 32,
+        learning_rate: float = 0.001,
+    ) -> dict:
         """
         Train the autoencoder and compute an anomaly threshold from reconstruction error.
         """
@@ -549,7 +621,9 @@ class ECGAnomalyDetector:
                     reconstructed, _ = self.autoencoder(batch)
                     errors = torch.mean((batch - reconstructed) ** 2, dim=1)
                     reconstruction_errors.extend(errors.cpu().numpy())
-            self.threshold = np.percentile(reconstruction_errors, self.threshold_percentile)
+            self.threshold = np.percentile(
+                reconstruction_errors, self.threshold_percentile
+            )
             return history
 
         except Exception as e:
@@ -569,7 +643,9 @@ class ECGAnomalyDetector:
             self.autoencoder.eval()
             with torch.no_grad():
                 reconstructed, _ = self.autoencoder(X_tensor)
-                reconstruction_error = torch.mean((X_tensor - reconstructed) ** 2, dim=1)
+                reconstruction_error = torch.mean(
+                    (X_tensor - reconstructed) ** 2, dim=1
+                )
             anomaly_scores = reconstruction_error.cpu().numpy()
             anomalies = (anomaly_scores > self.threshold).astype(int)
             return anomalies, anomaly_scores
@@ -598,13 +674,24 @@ class ECGAnomalyDetector:
         Save the autoencoder state along with scaler parameters and threshold.
         """
         try:
-            torch.save({
-                "autoencoder_state_dict": self.autoencoder.state_dict(),
-                "threshold": float(self.threshold) if self.threshold is not None else None,
-                "scaler_mean_": self.scaler.mean_.tolist() if hasattr(self.scaler, "mean_") else None,
-                "scaler_scale_": self.scaler.scale_.tolist() if hasattr(self.scaler, "scale_") else None,
-                "scaler_var_": self.scaler.var_.tolist() if hasattr(self.scaler, "var_") else None,
-            }, path)
+            torch.save(
+                {
+                    "autoencoder_state_dict": self.autoencoder.state_dict(),
+                    "threshold": float(self.threshold)
+                    if self.threshold is not None
+                    else None,
+                    "scaler_mean_": self.scaler.mean_.tolist()
+                    if hasattr(self.scaler, "mean_")
+                    else None,
+                    "scaler_scale_": self.scaler.scale_.tolist()
+                    if hasattr(self.scaler, "scale_")
+                    else None,
+                    "scaler_var_": self.scaler.var_.tolist()
+                    if hasattr(self.scaler, "var_")
+                    else None,
+                },
+                path,
+            )
             logger.info(f"Model saved successfully to {path}")
         except Exception as e:
             logger.error(f"Error saving model: {str(e)}")
@@ -640,16 +727,18 @@ if __name__ == "__main__":
     def test_ecg_denoiser():
         try:
             print("Generating synthetic ECG data...")
-            n_samples = 100       # number of signals
+            n_samples = 100  # number of signals
             signal_length = 1000  # length of each signal
-            sampling_rate = 500   # Hz
+            sampling_rate = 500  # Hz
 
             # Use an integer duration so that NeuroKit2 slicing works correctly
             duration = int(signal_length / sampling_rate)  # e.g., 2 seconds
 
             clean_signals = []
             for _ in range(n_samples):
-                ecg = nk.ecg_simulate(duration=duration, sampling_rate=sampling_rate, noise=0)
+                ecg = nk.ecg_simulate(
+                    duration=duration, sampling_rate=sampling_rate, noise=0
+                )
                 ecg = np.array(ecg)
                 # Ensure fixed length:
                 if len(ecg) > signal_length:
@@ -662,12 +751,16 @@ if __name__ == "__main__":
 
             # Create noisy signals:
             noise_level = 0.1
-            noisy_signals = clean_signals + noise_level * np.random.randn(*clean_signals.shape)
+            noisy_signals = clean_signals + noise_level * np.random.randn(
+                *clean_signals.shape
+            )
 
             print("Initializing ECG Deep Denoiser...")
             denoiser = ECGDeepDenoiser(input_length=signal_length)
 
-            X_train, X_test = train_test_split(noisy_signals, test_size=0.2, random_state=42)
+            X_train, X_test = train_test_split(
+                noisy_signals, test_size=0.2, random_state=42
+            )
 
             print("Training the model...")
             history = denoiser.train(
@@ -700,7 +793,9 @@ if __name__ == "__main__":
 
             print("\nTesting denoising on a single signal...")
             test_signal = X_test[0]
-            denoised_signal, reconstruction_error = denoiser.denoise(test_signal, return_reconstruction_error=True)
+            denoised_signal, reconstruction_error = denoiser.denoise(
+                test_signal, return_reconstruction_error=True
+            )
 
             plt.figure(figsize=(15, 8))
             plt.subplot(3, 1, 1)
@@ -717,7 +812,9 @@ if __name__ == "__main__":
 
             plt.subplot(3, 1, 3)
             plt.plot(denoised_signal)
-            plt.title(f"Denoised Signal (Reconstruction Error: {reconstruction_error:.6f})")
+            plt.title(
+                f"Denoised Signal (Reconstruction Error: {reconstruction_error:.6f})"
+            )
             plt.xlabel("Sample")
             plt.ylabel("Amplitude")
             plt.tight_layout()
@@ -740,6 +837,7 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"Error in test_ecg_denoiser: {str(e)}")
             import traceback
+
             traceback.print_exc()
             return False
 

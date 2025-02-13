@@ -7,6 +7,7 @@ import pywt
 
 # We still use SciPy for some digital filter design and filtering.
 from scipy.signal import medfilt, savgol_filter, butter, filtfilt
+
 # For median absolute deviation – note that here we use the NumPy version.
 from scipy.stats import median_abs_deviation as mad
 
@@ -95,7 +96,10 @@ def wavelet_denoise(
 
 
 def adaptive_lms_filter(
-    desired: torch.Tensor, reference: torch.Tensor, mu: float = 0.01, filter_order: int = 32
+    desired: torch.Tensor,
+    reference: torch.Tensor,
+    mu: float = 0.01,
+    filter_order: int = 32,
 ) -> torch.Tensor:
     """
     Adaptive Least Mean Squares filtering using torch operations.
@@ -112,7 +116,9 @@ def adaptive_lms_filter(
             raise ValueError(f"Learning rate mu must be between 0 and 1, got {mu}")
 
         if not isinstance(filter_order, int) or filter_order <= 0:
-            raise ValueError(f"Filter order must be a positive integer, got {filter_order}")
+            raise ValueError(
+                f"Filter order must be a positive integer, got {filter_order}"
+            )
 
         if filter_order >= desired.size(0):
             raise ValueError("Filter order must be less than signal length")
@@ -128,7 +134,9 @@ def adaptive_lms_filter(
             chunk_indices = torch.arange(i, end, device=desired.device)
 
             # For each index j, create an input vector from reference[j-filter_order:j] in reverse order.
-            X = torch.stack([reference[j - filter_order : j].flip(0) for j in chunk_indices])
+            X = torch.stack(
+                [reference[j - filter_order : j].flip(0) for j in chunk_indices]
+            )
 
             # Compute the output for the chunk.
             Y = torch.matmul(X, weights)
@@ -221,7 +229,9 @@ def median_filter_signal(signal: torch.Tensor, kernel_size: int = 5) -> torch.Te
         raise
 
 
-def smooth_signal(signal: torch.Tensor, window_length: int = 51, polyorder: int = 3) -> torch.Tensor:
+def smooth_signal(
+    signal: torch.Tensor, window_length: int = 51, polyorder: int = 3
+) -> torch.Tensor:
     """
     Smooth the signal with a Savitzky–Golay filter implemented in PyTorch.
     The filter coefficients are computed from a Vandermonde matrix and applied via conv1d.
@@ -253,7 +263,9 @@ def smooth_signal(signal: torch.Tensor, window_length: int = 51, polyorder: int 
 
         half_window = window_length // 2
         # Create a vector of indices centered about zero.
-        ind = torch.arange(-half_window, half_window + 1, dtype=signal.dtype, device=signal.device)
+        ind = torch.arange(
+            -half_window, half_window + 1, dtype=signal.dtype, device=signal.device
+        )
         # Build a Vandermonde matrix (each column is exponentiated index).
         A = torch.stack([ind**i for i in range(polyorder + 1)], dim=1)
         # Compute the pseudoinverse.
@@ -261,7 +273,9 @@ def smooth_signal(signal: torch.Tensor, window_length: int = 51, polyorder: int 
         # The coefficients for the smoothing filter correspond to the projection for the 0th derivative.
         coeffs = A_pinv[0]
         # Flip coefficients because conv1d performs a correlation.
-        coeffs = coeffs.flip(0).unsqueeze(0).unsqueeze(0)  # shape: (1, 1, window_length)
+        coeffs = (
+            coeffs.flip(0).unsqueeze(0).unsqueeze(0)
+        )  # shape: (1, 1, window_length)
 
         pad = half_window
         sig_reshaped = signal.unsqueeze(0).unsqueeze(0)  # shape: (1, 1, L)
@@ -274,7 +288,9 @@ def smooth_signal(signal: torch.Tensor, window_length: int = 51, polyorder: int 
         raise
 
 
-def remove_respiratory_noise(signal: torch.Tensor, fs: float, resp_freq_range: Tuple[float, float] = (0.15, 0.4)) -> torch.Tensor:
+def remove_respiratory_noise(
+    signal: torch.Tensor, fs: float, resp_freq_range: Tuple[float, float] = (0.15, 0.4)
+) -> torch.Tensor:
     try:
         validate_signal(signal)
         nyquist = fs / 2
@@ -288,7 +304,9 @@ def remove_respiratory_noise(signal: torch.Tensor, fs: float, resp_freq_range: T
         raise
 
 
-def remove_emg_noise(signal: torch.Tensor, fs: float, emg_freq_threshold: float = 20.0) -> torch.Tensor:
+def remove_emg_noise(
+    signal: torch.Tensor, fs: float, emg_freq_threshold: float = 20.0
+) -> torch.Tensor:
     try:
         validate_signal(signal)
         denoised = wavelet_denoise(signal, wavelet="sym4", level=4, mode="soft")
@@ -303,7 +321,9 @@ def remove_emg_noise(signal: torch.Tensor, fs: float, emg_freq_threshold: float 
         raise
 
 
-def remove_eda_noise(signal: torch.Tensor, fs: float, eda_freq_range: Tuple[float, float] = (0.01, 1.0)) -> torch.Tensor:
+def remove_eda_noise(
+    signal: torch.Tensor, fs: float, eda_freq_range: Tuple[float, float] = (0.01, 1.0)
+) -> torch.Tensor:
     try:
         validate_signal(signal)
         nyquist = fs / 2
@@ -378,7 +398,9 @@ if __name__ == "__main__":
     )
 
     noise_reference = torch.tensor(
-        np.random.normal(0, 0.2, size=clean_signal_np.shape), device=device, dtype=torch.float32
+        np.random.normal(0, 0.2, size=clean_signal_np.shape),
+        device=device,
+        dtype=torch.float32,
     )
     denoised_adaptive = adaptive_lms_filter(
         noisy_signal_torch, noise_reference, mu=0.01, filter_order=32
@@ -387,7 +409,9 @@ if __name__ == "__main__":
     denoised_emd = emd_denoise(noisy_signal_torch, imf_to_remove=1)
 
     denoised_median = median_filter_signal(noisy_signal_torch, kernel_size=5)
-    denoised_smoothing = smooth_signal(noisy_signal_torch, window_length=51, polyorder=3)
+    denoised_smoothing = smooth_signal(
+        noisy_signal_torch, window_length=51, polyorder=3
+    )
 
     denoised_resp = remove_respiratory_noise(noisy_signal_torch, fs)
     denoised_emg = remove_emg_noise(noisy_signal_torch, fs)
@@ -420,7 +444,12 @@ if __name__ == "__main__":
     plt.grid(True)
 
     plt.subplot(3, 2, 3)
-    plt.plot(t, denoised_adaptive.cpu().numpy(), label="Adaptive LMS Denoised", color="purple")
+    plt.plot(
+        t,
+        denoised_adaptive.cpu().numpy(),
+        label="Adaptive LMS Denoised",
+        color="purple",
+    )
     plt.title("Adaptive LMS Filter")
     plt.xlabel("Time (s)")
     plt.legend()
@@ -441,7 +470,12 @@ if __name__ == "__main__":
     plt.grid(True)
 
     plt.subplot(3, 2, 6)
-    plt.plot(t, denoised_smoothing.cpu().numpy(), label="Savitzky–Golay Denoise", color="brown")
+    plt.plot(
+        t,
+        denoised_smoothing.cpu().numpy(),
+        label="Savitzky–Golay Denoise",
+        color="brown",
+    )
     plt.title("Savitzky–Golay Smoothing")
     plt.xlabel("Time (s)")
     plt.legend()

@@ -9,6 +9,7 @@ from .visualization import plot_signal_comparison, plot_comprehensive_analysis
 
 logger = logging.getLogger(__name__)
 
+
 def extract_statistical_features(beat: np.ndarray) -> Dict:
     """
     Extract statistical features from a beat.
@@ -42,35 +43,39 @@ def extract_statistical_features(beat: np.ndarray) -> Dict:
 
         # Basic statistics
         basic_stats = {
-            'mean': float(np.mean(beat)),
-            'std': float(np.std(beat)),
-            'max': float(np.max(beat)),
-            'min': float(np.min(beat)),
-            'median': float(np.median(beat)),
-            'mad': float(stats.median_abs_deviation(beat))
+            "mean": float(np.mean(beat)),
+            "std": float(np.std(beat)),
+            "max": float(np.max(beat)),
+            "min": float(np.min(beat)),
+            "median": float(np.median(beat)),
+            "mad": float(stats.median_abs_deviation(beat)),
         }
 
         # Shape statistics
         shape_stats = {
-            'skewness': float(stats.skew(beat)),
-            'kurtosis': float(stats.kurtosis(beat)),
-            'peak_factor': float(np.max(np.abs(beat)) / np.sqrt(np.mean(np.square(beat))))
+            "skewness": float(stats.skew(beat)),
+            "kurtosis": float(stats.kurtosis(beat)),
+            "peak_factor": float(
+                np.max(np.abs(beat)) / np.sqrt(np.mean(np.square(beat)))
+            ),
         }
 
         # Energy metrics
         energy_metrics = {
-            'energy': float(np.sum(beat ** 2)),
-            'rms': float(np.sqrt(np.mean(np.square(beat)))),
-            'peak_to_rms': float(np.max(np.abs(beat)) / np.sqrt(np.mean(np.square(beat))))
+            "energy": float(np.sum(beat**2)),
+            "rms": float(np.sqrt(np.mean(np.square(beat)))),
+            "peak_to_rms": float(
+                np.max(np.abs(beat)) / np.sqrt(np.mean(np.square(beat)))
+            ),
         }
 
         # Additional metrics
-        hist, _ = np.histogram(beat, bins='auto', density=True)
+        hist, _ = np.histogram(beat, bins="auto", density=True)
         additional_metrics = {
-            'entropy': float(stats.entropy(hist)),
-            'zero_crossings': int(np.sum(np.diff(np.signbit(beat)))),
-            'range': float(np.ptp(beat)),
-            'variance': float(np.var(beat))
+            "entropy": float(stats.entropy(hist)),
+            "zero_crossings": int(np.sum(np.diff(np.signbit(beat)))),
+            "range": float(np.ptp(beat)),
+            "variance": float(np.var(beat)),
         }
 
         return {**basic_stats, **shape_stats, **energy_metrics, **additional_metrics}
@@ -79,7 +84,10 @@ def extract_statistical_features(beat: np.ndarray) -> Dict:
         logger.error(f"Error extracting statistical features: {str(e)}")
         raise
 
-def extract_wavelet_features(beat: np.ndarray, wavelet: str = 'db4', level: int = 4) -> Dict:
+
+def extract_wavelet_features(
+    beat: np.ndarray, wavelet: str = "db4", level: int = 4
+) -> Dict:
     """
     Extract wavelet features from a beat using discrete wavelet transform.
 
@@ -109,7 +117,9 @@ def extract_wavelet_features(beat: np.ndarray, wavelet: str = 'db4', level: int 
         if not isinstance(beat, np.ndarray):
             raise ValueError("Input must be a numpy array")
         if len(beat) < 2**level:
-            raise ValueError(f"Signal length must be at least {2**level} for level {level} decomposition")
+            raise ValueError(
+                f"Signal length must be at least {2**level} for level {level} decomposition"
+            )
 
         # Perform wavelet decomposition
         max_level = pywt.dwt_max_level(len(beat), pywt.Wavelet(wavelet).dec_len)
@@ -123,27 +133,29 @@ def extract_wavelet_features(beat: np.ndarray, wavelet: str = 'db4', level: int 
             # Energy features
             energy = np.sum(np.square(coeff))
             total_energy += energy
-            features[f'wavelet_energy_{i}'] = float(energy)
+            features[f"wavelet_energy_{i}"] = float(energy)
 
             # Entropy features
-            hist, _ = np.histogram(coeff, bins='auto', density=True)
-            features[f'wavelet_entropy_{i}'] = float(stats.entropy(hist))
+            hist, _ = np.histogram(coeff, bins="auto", density=True)
+            features[f"wavelet_entropy_{i}"] = float(stats.entropy(hist))
 
             # Statistical features of coefficients
-            features[f'wavelet_mean_{i}'] = float(np.mean(coeff))
-            features[f'wavelet_std_{i}'] = float(np.std(coeff))
-            features[f'wavelet_max_{i}'] = float(np.max(np.abs(coeff)))
+            features[f"wavelet_mean_{i}"] = float(np.mean(coeff))
+            features[f"wavelet_std_{i}"] = float(np.std(coeff))
+            features[f"wavelet_max_{i}"] = float(np.max(np.abs(coeff)))
 
         # Calculate relative energies
         for i in range(len(coeffs)):
-            features[f'wavelet_relative_energy_{i}'] = \
-                float(features[f'wavelet_energy_{i}'] / total_energy)
+            features[f"wavelet_relative_energy_{i}"] = float(
+                features[f"wavelet_energy_{i}"] / total_energy
+            )
 
         return features
 
     except Exception as e:
         logger.error(f"Error extracting wavelet features: {str(e)}")
         raise
+
 
 def extract_morphological_features(beat: np.ndarray, fs: float) -> Dict:
     """
@@ -181,55 +193,62 @@ def extract_morphological_features(beat: np.ndarray, fs: float) -> Dict:
         # Ensure minimum signal length (at least 1 second of data)
         min_length = int(fs)
         if len(beat) < min_length:
-            logger.warning(f"Beat too short for morphological analysis: {len(beat)} samples")
+            logger.warning(
+                f"Beat too short for morphological analysis: {len(beat)} samples"
+            )
             return {
-                'p_wave_duration': None,
-                'qrs_duration': None,
-                't_wave_duration': None,
-                'pr_interval': None,
-                'qt_interval': None,
-                'r_amplitude': None,
-                's_amplitude': None,
-                'p_amplitude': None,
-                't_amplitude': None,
-                'st_level': None
+                "p_wave_duration": None,
+                "qrs_duration": None,
+                "t_wave_duration": None,
+                "pr_interval": None,
+                "qt_interval": None,
+                "r_amplitude": None,
+                "s_amplitude": None,
+                "p_amplitude": None,
+                "t_amplitude": None,
+                "st_level": None,
             }
 
         # Process the beat to get peaks and waves
         _, info = nk.ecg_process(beat, sampling_rate=fs)
-        peaks = info['ECG_R_Peaks']
+        peaks = info["ECG_R_Peaks"]
         _, waves = nk.ecg_delineate(beat, peaks, sampling_rate=fs, method="peak")
 
         # Calculate QRS duration
-        qrs_onset = waves.get('ECG_Q_Onsets', [None])[0]
-        qrs_offset = waves.get('ECG_S_Offsets', [None])[0]
+        qrs_onset = waves.get("ECG_Q_Onsets", [None])[0]
+        qrs_offset = waves.get("ECG_S_Offsets", [None])[0]
         if qrs_onset is not None and qrs_offset is not None:
             qrs_duration = (qrs_offset - qrs_onset) / fs * 1000  # Convert to ms
         else:
-            qrs_duration = None if qrs_onset is None or qrs_offset is None else (qrs_offset - qrs_onset) / fs * 1000  # Convert to ms
+            qrs_duration = (
+                None
+                if qrs_onset is None or qrs_offset is None
+                else (qrs_offset - qrs_onset) / fs * 1000
+            )  # Convert to ms
 
         # Calculate wave amplitudes
-        r_peak_idx = peaks[0] if len(peaks) > 0 else None 
-        r_amplitude = _safe_amplitude(beat, waves, 'ECG_R_Peaks')
-        s_amplitude = _safe_amplitude(beat, waves, 'ECG_S_Peaks')
+        r_peak_idx = peaks[0] if len(peaks) > 0 else None
+        r_amplitude = _safe_amplitude(beat, waves, "ECG_R_Peaks")
+        s_amplitude = _safe_amplitude(beat, waves, "ECG_S_Peaks")
 
         return {
-            'p_wave_duration': _safe_duration(waves, 'P_Onset', 'P_Offset', fs),
-            'qrs_duration': _safe_duration(waves, 'QRS_Onset', 'QRS_Offset', fs),
-            't_wave_duration': _safe_duration(waves, 'T_Onset', 'T_Offset', fs),
-            'pr_interval': _safe_duration(waves, 'P_Onset', 'QRS_Onset', fs),
-            'qt_interval': _safe_duration(waves, 'QRS_Onset', 'T_Offset', fs),
-            'r_amplitude': float(np.max(waves)),
-            's_amplitude': float(np.min(waves)),
-            'p_amplitude': _safe_amplitude(waves, 'P_Peak'),
-            't_amplitude': _safe_amplitude(waves, 'T_Peak'),
-            'st_level': _calculate_st_level(waves, fs)
+            "p_wave_duration": _safe_duration(waves, "P_Onset", "P_Offset", fs),
+            "qrs_duration": _safe_duration(waves, "QRS_Onset", "QRS_Offset", fs),
+            "t_wave_duration": _safe_duration(waves, "T_Onset", "T_Offset", fs),
+            "pr_interval": _safe_duration(waves, "P_Onset", "QRS_Onset", fs),
+            "qt_interval": _safe_duration(waves, "QRS_Onset", "T_Offset", fs),
+            "r_amplitude": float(np.max(waves)),
+            "s_amplitude": float(np.min(waves)),
+            "p_amplitude": _safe_amplitude(waves, "P_Peak"),
+            "t_amplitude": _safe_amplitude(waves, "T_Peak"),
+            "st_level": _calculate_st_level(waves, fs),
         }
 
     except Exception as e:
         logger.error(f"Error extracting morphological features: {str(e)}")
         return {}
-    
+
+
 def test_extract_statistical_features():
     """
     Test the extract_statistical_features function with a synthetic beat.
@@ -238,12 +257,12 @@ def test_extract_statistical_features():
         # Create a synthetic beat with more realistic length and shape
         t = np.linspace(0, 1, 100)  # 100 samples
         beat = np.sin(2 * np.pi * 2 * t) * np.exp(-2 * t)  # Damped sine wave
-        
+
         features = extract_statistical_features(beat)
         print("Statistical Features:")
         for key, value in features.items():
             print(f"  {key}: {value}")
-            
+
     except Exception as e:
         logger.error(f"Error in statistical features test: {str(e)}")
 
@@ -258,21 +277,21 @@ def test_extract_wavelet_features():
         # Using 128 samples for better resolution
         t = np.linspace(0, 1, 128)
         beat = np.sin(2 * np.pi * 2 * t) * np.exp(-2 * t)  # Damped sine wave
-        
+
         # Test with lower level first
         print("\nTesting wavelet decomposition with level 2:")
-        features_l2 = extract_wavelet_features(beat, wavelet='db4', level=2)
+        features_l2 = extract_wavelet_features(beat, wavelet="db4", level=2)
         print("Wavelet Features (Level 2):")
         for key, value in features_l2.items():
             print(f"  {key}: {value}")
-            
+
         # Test with level 4
         print("\nTesting wavelet decomposition with level 4:")
-        features_l4 = extract_wavelet_features(beat, wavelet='db4', level=4)
+        features_l4 = extract_wavelet_features(beat, wavelet="db4", level=4)
         print("Wavelet Features (Level 4):")
         for key, value in features_l4.items():
             print(f"  {key}: {value}")
-            
+
     except Exception as e:
         logger.error(f"Error extracting wavelet features: {str(e)}")
 
@@ -292,6 +311,7 @@ def test_extract_morphological_features():
     print("Morphological Features:")
     for key, value in features.items():
         print(f"  {key}: {value}")
+
 
 def extract_stft_features(beat: np.ndarray, fs: float, nperseg: int = 128) -> Dict:
     """
@@ -333,30 +353,31 @@ def extract_stft_features(beat: np.ndarray, fs: float, nperseg: int = 128) -> Di
 
         # Basic energy statistics
         energy_stats = {
-            'stft_mean_energy': float(np.mean(magnitude)),
-            'stft_max_energy': float(np.max(magnitude)),
-            'stft_std_energy': float(np.std(magnitude)),
-            'stft_total_energy': float(np.sum(magnitude))
+            "stft_mean_energy": float(np.mean(magnitude)),
+            "stft_max_energy": float(np.max(magnitude)),
+            "stft_std_energy": float(np.std(magnitude)),
+            "stft_total_energy": float(np.sum(magnitude)),
         }
 
         # Frequency band powers
         freq_bands = {
-            'low': (0, 5),    # 0-5 Hz
-            'medium': (5, 20), # 5-20 Hz
-            'high': (20, 50)   # 20-50 Hz
+            "low": (0, 5),  # 0-5 Hz
+            "medium": (5, 20),  # 5-20 Hz
+            "high": (20, 50),  # 20-50 Hz
         }
 
         band_powers = {}
         for band_name, (low, high) in freq_bands.items():
             mask = (f >= low) & (f <= high)
-            band_powers[f'stft_power_{band_name}'] = \
-                float(np.sum(magnitude[mask, :]) / magnitude.size)
+            band_powers[f"stft_power_{band_name}"] = float(
+                np.sum(magnitude[mask, :]) / magnitude.size
+            )
 
         # Spectral shape metrics
         shape_metrics = {
-            'stft_spectral_centroid': float(_spectral_centroid(f, magnitude)),
-            'stft_spectral_bandwidth': float(_spectral_bandwidth(f, magnitude)),
-            'stft_spectral_rolloff': float(_spectral_rolloff(magnitude))
+            "stft_spectral_centroid": float(_spectral_centroid(f, magnitude)),
+            "stft_spectral_bandwidth": float(_spectral_bandwidth(f, magnitude)),
+            "stft_spectral_rolloff": float(_spectral_rolloff(magnitude)),
         }
 
         return {**energy_stats, **band_powers, **shape_metrics}
@@ -365,8 +386,14 @@ def extract_stft_features(beat: np.ndarray, fs: float, nperseg: int = 128) -> Di
         logger.error(f"Error extracting STFT features: {str(e)}")
         raise
 
-def extract_hybrid_features(beat: np.ndarray, fs: float, wavelet: str = 'db4',
-                          level: int = 4, nperseg: int = 128) -> Dict:
+
+def extract_hybrid_features(
+    beat: np.ndarray,
+    fs: float,
+    wavelet: str = "db4",
+    level: int = 4,
+    nperseg: int = 128,
+) -> Dict:
     """
     Extract hybrid features combining multiple domains.
 
@@ -404,7 +431,7 @@ def extract_hybrid_features(beat: np.ndarray, fs: float, wavelet: str = 'db4',
             raise ValueError("Sampling rate must be a positive number")
 
         features = {}
-        
+
         # Extract features from each domain with proper error handling
         try:
             features.update(extract_statistical_features(beat))
@@ -436,7 +463,10 @@ def extract_hybrid_features(beat: np.ndarray, fs: float, wavelet: str = 'db4',
         logger.error(f"Error in hybrid feature extraction: {str(e)}")
         raise
 
-def _safe_duration(waves: Dict, start_key: str, end_key: str, fs: float) -> Optional[float]:
+
+def _safe_duration(
+    waves: Dict, start_key: str, end_key: str, fs: float
+) -> Optional[float]:
     """Safely calculate duration between two wave points."""
     try:
         if waves[start_key] is not None and waves[end_key] is not None:
@@ -445,11 +475,13 @@ def _safe_duration(waves: Dict, start_key: str, end_key: str, fs: float) -> Opti
     except (KeyError, TypeError):
         return None
 
+
 def _safe_interval(waves: Dict, end_key: str, start_key: str) -> Optional[float]:
     """Safely calculate interval between two wave points."""
     if waves[end_key] and waves[start_key]:
         return float(waves[end_key] - waves[start_key])
     return None
+
 
 def _safe_amplitude(beat: np.ndarray, waves: Dict, key: str) -> Optional[float]:
     """Safely get amplitude at a specific wave point."""
@@ -457,12 +489,13 @@ def _safe_amplitude(beat: np.ndarray, waves: Dict, key: str) -> Optional[float]:
         return float(beat[int(waves[key])])
     return None
 
+
 def _calculate_st_level(beat: np.ndarray, waves: Dict, fs: float) -> Optional[float]:
     """Calculate ST segment level relative to baseline."""
     try:
-        if waves['R_offset'] and waves['T_onset']:
-            st_start = int(waves['R_offset'])
-            st_end = int(waves['T_onset'])
+        if waves["R_offset"] and waves["T_onset"]:
+            st_start = int(waves["R_offset"])
+            st_end = int(waves["T_onset"])
             st_segment = beat[st_start:st_end]
             return float(np.mean(st_segment))
     except Exception as e:
@@ -471,8 +504,10 @@ def _calculate_st_level(beat: np.ndarray, waves: Dict, fs: float) -> Optional[fl
 
     return None
 
-def _calculate_wave_symmetry(beat: np.ndarray, waves: Dict, 
-                            start_key: str, end_key: str) -> Optional[float]:
+
+def _calculate_wave_symmetry(
+    beat: np.ndarray, waves: Dict, start_key: str, end_key: str
+) -> Optional[float]:
     """Calculate symmetry of a wave segment."""
     try:
         if waves[start_key] and waves[end_key]:
@@ -489,10 +524,12 @@ def _calculate_wave_symmetry(beat: np.ndarray, waves: Dict,
         pass
     return None
 
+
 def _spectral_centroid(freqs: np.ndarray, magnitude: np.ndarray) -> float:
     """Calculate spectral centroid."""
     magnitude_sum = np.sum(magnitude, axis=1)
     return np.sum(freqs * magnitude_sum) / np.sum(magnitude_sum)
+
 
 def _spectral_bandwidth(freqs: np.ndarray, magnitude: np.ndarray) -> float:
     """Calculate spectral bandwidth."""
@@ -501,9 +538,10 @@ def _spectral_bandwidth(freqs: np.ndarray, magnitude: np.ndarray) -> float:
     variance = np.sum(((freqs - centroid) ** 2) * magnitude_sum) / np.sum(magnitude_sum)
     return np.sqrt(variance)
 
+
 def _spectral_rolloff(magnitude: np.ndarray, percentile: float = 0.85) -> float:
     """Calculate frequency below which percentile of the magnitude spectrum energy lies."""
-    power = np.sum(magnitude ** 2, axis=1)
+    power = np.sum(magnitude**2, axis=1)
     cumsum = np.cumsum(power)
     return np.where(cumsum >= percentile * cumsum[-1])[0][0]
 
@@ -532,10 +570,12 @@ if __name__ == "__main__":
     processed_signal = np.sin(2 * np.pi * 1 * t)
 
     # --- Plot the dummy signals comparison using the first function ---
-    plot_signal_comparison(original=original_signal,
-                        processed=processed_signal,
-                        fs=fs,
-                        title="Dummy ECG Signal Comparison")
+    plot_signal_comparison(
+        original=original_signal,
+        processed=processed_signal,
+        fs=fs,
+        title="Dummy ECG Signal Comparison",
+    )
 
     # --- Create a dummy results dictionary for comprehensive analysis ---
     # Here we simulate:
@@ -549,16 +589,17 @@ if __name__ == "__main__":
     dummy_psd = np.abs(np.sin(dummy_frequencies))  # dummy PSD values
 
     results = {
-        'original_signal': original_signal,
-        'processed_signal': processed_signal,
-        'peaks': dummy_peaks,
-        'hrv_metrics': {'rr_intervals': dummy_rr_intervals},
-        'frequencies': dummy_frequencies,
-        'psd': dummy_psd
+        "original_signal": original_signal,
+        "processed_signal": processed_signal,
+        "peaks": dummy_peaks,
+        "hrv_metrics": {"rr_intervals": dummy_rr_intervals},
+        "frequencies": dummy_frequencies,
+        "psd": dummy_psd,
     }
 
     # --- Plot comprehensive analysis ---
     plot_comprehensive_analysis(results)
+
 
 def analyze_qt_interval(beat: np.ndarray, waves: Dict, fs: float) -> Dict:
     """
@@ -573,13 +614,15 @@ def analyze_qt_interval(beat: np.ndarray, waves: Dict, fs: float) -> Dict:
             raise ValueError("Waves must be a dictionary")
 
         # Check for required wave points
-        required_points = ['Q_start', 'T_end', 'R_start', 'R_end']
-        if not all(point in waves and waves[point] is not None for point in required_points):
+        required_points = ["Q_start", "T_end", "R_start", "R_end"]
+        if not all(
+            point in waves and waves[point] is not None for point in required_points
+        ):
             return {}
 
         # Calculate intervals in samples
-        qt_samples = waves['T_end'] - waves['Q_start']
-        rr_samples = waves['R_end'] - waves['R_start']
+        qt_samples = waves["T_end"] - waves["Q_start"]
+        rr_samples = waves["R_end"] - waves["R_start"]
 
         # Convert to seconds
         qt_sec = qt_samples / fs
@@ -600,20 +643,20 @@ def analyze_qt_interval(beat: np.ndarray, waves: Dict, fs: float) -> Dict:
         # Calculate JT interval if J point is available
         jt_sec = None
         jtc = None
-        if 'J_point' in waves and waves['J_point'] is not None:
-            jt_samples = waves['T_end'] - waves['J_point']
+        if "J_point" in waves and waves["J_point"] is not None:
+            jt_samples = waves["T_end"] - waves["J_point"]
             jt_sec = jt_samples / fs
             jtc = jt_sec / np.sqrt(rr_sec)
 
         # Convert to milliseconds for output
         results = {
-            'QT_interval': float(qt_sec * 1000),
-            'QTc_Bazett': float(qtc_bazett * 1000),
-            'QTc_Fridericia': float(qtc_fridericia * 1000),
-            'QTc_Framingham': float(qtc_framingham * 1000),
-            'JT_interval': float(jt_sec * 1000) if jt_sec is not None else None,
-            'JTc': float(jtc * 1000) if jtc is not None else None,
-            'Heart_Rate': float(hr)
+            "QT_interval": float(qt_sec * 1000),
+            "QTc_Bazett": float(qtc_bazett * 1000),
+            "QTc_Fridericia": float(qtc_fridericia * 1000),
+            "QTc_Framingham": float(qtc_framingham * 1000),
+            "JT_interval": float(jt_sec * 1000) if jt_sec is not None else None,
+            "JTc": float(jtc * 1000) if jtc is not None else None,
+            "Heart_Rate": float(hr),
         }
 
         return results
@@ -622,10 +665,13 @@ def analyze_qt_interval(beat: np.ndarray, waves: Dict, fs: float) -> Dict:
         logger.error(f"Error in QT interval analysis: {str(e)}")
         return {}
 
-def detect_t_wave_alternans(beats: List[np.ndarray], waves: List[Dict], fs: float) -> Dict:
+
+def detect_t_wave_alternans(
+    beats: List[np.ndarray], waves: List[Dict], fs: float
+) -> Dict:
     """
     Detect and quantify T-wave alternans (TWA).
-    
+
     Parameters
     ----------
     beats : List[np.ndarray]
@@ -634,7 +680,7 @@ def detect_t_wave_alternans(beats: List[np.ndarray], waves: List[Dict], fs: floa
         List of wave delineation dictionaries for each beat
     fs : float
         Sampling frequency in Hz
-        
+
     Returns
     -------
     Dict
@@ -647,48 +693,49 @@ def detect_t_wave_alternans(beats: List[np.ndarray], waves: List[Dict], fs: floa
     try:
         if len(beats) < 4:  # Need at least 4 beats for analysis
             return {}
-            
+
         t_wave_amplitudes = []
         for i, (beat, wave) in enumerate(zip(beats, waves)):
             # Extract T-wave segment
-            t_start = wave.get('T_start')
-            t_end = wave.get('T_end')
+            t_start = wave.get("T_start")
+            t_end = wave.get("T_end")
             if t_start is not None and t_end is not None:
                 t_wave = beat[t_start:t_end]
                 t_wave_amplitudes.append(np.max(t_wave))
-            
+
         if len(t_wave_amplitudes) < 4:
             return {}
-            
+
         # Calculate alternans metrics
         t_wave_amplitudes = np.array(t_wave_amplitudes)
         even_beats = t_wave_amplitudes[::2]
         odd_beats = t_wave_amplitudes[1::2]
-        
+
         # TWA magnitude
         twa_magnitude = np.mean(np.abs(even_beats - odd_beats))
-        
+
         # TWA ratio
         twa_ratio = np.mean(np.abs(even_beats - odd_beats)) / np.mean(t_wave_amplitudes)
-        
+
         # K score (statistical significance)
         k_score = _calculate_k_score(even_beats, odd_beats)
-        
+
         return {
-            'TWA_magnitude': float(twa_magnitude),
-            'TWA_ratio': float(twa_ratio),
-            'Alternans_voltage': float(twa_magnitude / 2),
-            'K_score': float(k_score),
-            'TWA_present': bool(k_score > 3 and twa_ratio > 0.1)
+            "TWA_magnitude": float(twa_magnitude),
+            "TWA_ratio": float(twa_ratio),
+            "Alternans_voltage": float(twa_magnitude / 2),
+            "K_score": float(k_score),
+            "TWA_present": bool(k_score > 3 and twa_ratio > 0.1),
         }
     except Exception as e:
         logger.error(f"Error in T-wave alternans detection: {str(e)}")
         return {}
 
+
 def analyze_st_segment(beat: np.ndarray, waves: Dict, fs: float) -> Dict:
     """
     Analyze ST segment characteristics.
-    
+
     Parameters
     ----------
     beat : np.ndarray
@@ -697,7 +744,7 @@ def analyze_st_segment(beat: np.ndarray, waves: Dict, fs: float) -> Dict:
         Dictionary containing wave delineation points
     fs : float
         Sampling frequency in Hz
-        
+
     Returns
     -------
     Dict
@@ -709,43 +756,44 @@ def analyze_st_segment(beat: np.ndarray, waves: Dict, fs: float) -> Dict:
     """
     try:
         # Get ST segment points
-        j_point = waves.get('J_point')
-        t_start = waves.get('T_start')
-        
+        j_point = waves.get("J_point")
+        t_start = waves.get("T_start")
+
         if j_point is None or t_start is None:
             return {}
-            
+
         # Extract ST segment
         st_segment = beat[j_point:t_start]
-        
+
         # Calculate baseline (using PR segment)
-        pr_start = waves.get('P_start')
-        pr_end = waves.get('P_end')
+        pr_start = waves.get("P_start")
+        pr_end = waves.get("P_end")
         if pr_start is not None and pr_end is not None:
             baseline = np.mean(beat[pr_start:pr_end])
         else:
             baseline = 0
-            
+
         # ST metrics
-        st_level = np.mean(st_segment[:int(0.04*fs)]) - baseline  # First 40ms
+        st_level = np.mean(st_segment[: int(0.04 * fs)]) - baseline  # First 40ms
         st_slope = np.polyfit(np.arange(len(st_segment)), st_segment, 1)[0]
         # st_integral = np.trapz(st_segment - baseline) / fs
         st_integral = trapezoid(st_segment - baseline) / fs
-        
+
         # Classify ST shape
         st_shape = _classify_st_shape(st_segment, st_slope)
-        
+
         return {
-            'ST_level': float(st_level),
-            'ST_slope': float(st_slope),
-            'ST_integral': float(st_integral),
-            'ST_shape': st_shape,
-            'ST_elevation': bool(st_level > 0.1),  # 0.1mV threshold
-            'ST_depression': bool(st_level < -0.1)
+            "ST_level": float(st_level),
+            "ST_slope": float(st_slope),
+            "ST_integral": float(st_integral),
+            "ST_shape": st_shape,
+            "ST_elevation": bool(st_level > 0.1),  # 0.1mV threshold
+            "ST_depression": bool(st_level < -0.1),
         }
     except Exception as e:
         logger.error(f"Error in ST segment analysis: {str(e)}")
         return {}
+
 
 def _calculate_k_score(even_beats: np.ndarray, odd_beats: np.ndarray) -> float:
     """Calculate K-score for T-wave alternans."""
@@ -772,26 +820,28 @@ def _calculate_k_score(even_beats: np.ndarray, odd_beats: np.ndarray) -> float:
         logger.error(f"Error calculating K-score: {str(e)}")
         return 0.0
 
+
 def _classify_st_shape(st_segment: np.ndarray, threshold: float = 0.1) -> str:
     """Classify ST segment shape."""
     try:
         if len(st_segment) < 2:
-            return 'horizontal'
+            return "horizontal"
 
         # Calculate slope using linear regression
         x = np.arange(len(st_segment))
         slope, _ = np.polyfit(x, st_segment, 1)
 
         if abs(slope) < threshold:
-            return 'horizontal'
+            return "horizontal"
         elif slope > threshold:
-            return 'upsloping'
+            return "upsloping"
         else:
-            return 'downsloping'
+            return "downsloping"
 
     except Exception as e:
         logger.error(f"Error classifying ST shape: {str(e)}")
-        return 'horizontal'
+        return "horizontal"
+
 
 def _detect_qrs_peaks(self, signal: np.ndarray) -> np.ndarray:
     """Detect QRS complexes using NeuroKit2."""
@@ -804,7 +854,7 @@ def _detect_qrs_peaks(self, signal: np.ndarray) -> np.ndarray:
         cleaned = nk.ecg_clean(signal, sampling_rate=self.fs)
 
         # Detect R-peaks
-        peaks = nk.ecg_peaks(cleaned, sampling_rate=self.fs)[1]['ECG_R_Peaks']
+        peaks = nk.ecg_peaks(cleaned, sampling_rate=self.fs)[1]["ECG_R_Peaks"]
 
         if len(peaks) == 0:
             logger.warning("No QRS peaks detected")
@@ -816,6 +866,7 @@ def _detect_qrs_peaks(self, signal: np.ndarray) -> np.ndarray:
         logger.error(f"Error detecting QRS peaks: {str(e)}")
         return np.array([])
 
+
 def calculate_baseline_metrics(signal: np.ndarray) -> Dict:
     """Calculate baseline wander metrics."""
     try:
@@ -826,14 +877,10 @@ def calculate_baseline_metrics(signal: np.ndarray) -> Dict:
         baseline = signal - detrended
 
         return {
-            'baseline_mean': float(np.mean(np.abs(baseline))),
-            'baseline_std': float(np.std(baseline)),
-            'baseline_max': float(np.max(np.abs(baseline)))
+            "baseline_mean": float(np.mean(np.abs(baseline))),
+            "baseline_std": float(np.std(baseline)),
+            "baseline_max": float(np.max(np.abs(baseline))),
         }
     except Exception as e:
         logger.error(f"Error calculating baseline metrics: {str(e)}")
-        return {
-            'baseline_mean': None,
-            'baseline_std': None,
-            'baseline_max': None
-        }
+        return {"baseline_mean": None, "baseline_std": None, "baseline_max": None}

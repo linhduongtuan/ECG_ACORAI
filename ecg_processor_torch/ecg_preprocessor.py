@@ -33,6 +33,7 @@ from .features_transform import (
 
 logger = logging.getLogger(__name__)
 
+
 def _to_numpy(data):
     """
     Convert input to a NumPy array if it is a torch.Tensor.
@@ -41,6 +42,7 @@ def _to_numpy(data):
     if torch.is_tensor(data):
         return data.detach().cpu().numpy()
     return data
+
 
 class ECGPreprocessor:
     def __init__(
@@ -91,9 +93,7 @@ class ECGPreprocessor:
 
         return results
 
-    def process_signal(
-        self, signal, denoise_method: str = "none", **kwargs
-    ) -> Dict:
+    def process_signal(self, signal, denoise_method: str = "none", **kwargs) -> Dict:
         """Process an ECG signal using filtering, denoising, segmentation, feature extraction, and quality assessment."""
         try:
             # Accept signal as either a NumPy array or a torch.Tensor.
@@ -192,7 +192,9 @@ class ECGPreprocessor:
         elif method == "adaptive":
             reference = kwargs.get("reference", None)
             if reference is None:
-                raise ValueError("A reference signal is required for adaptive filtering.")
+                raise ValueError(
+                    "A reference signal is required for adaptive filtering."
+                )
             mu = kwargs.get("mu", 0.01)
             filter_order = kwargs.get("filter_order", 32)
             return adaptive_lms_filter(signal, reference, mu, filter_order)
@@ -245,7 +247,9 @@ class ECGPreprocessor:
         features = {}
         for i, beat in enumerate(beats):
             if len(beat) < 128:  # Ensure beat length is sufficient.
-                logger.warning(f"Beat {i} is too short for feature extraction (length: {len(beat)})")
+                logger.warning(
+                    f"Beat {i} is too short for feature extraction (length: {len(beat)})"
+                )
                 continue
             try:
                 features[f"beat_{i}"] = {
@@ -253,7 +257,9 @@ class ECGPreprocessor:
                     **extract_wavelet_features(beat, wavelet="db4", level=4),
                     **extract_morphological_features(beat, self.fs),
                     **extract_stft_features(beat, self.fs, nperseg=128),
-                    **extract_hybrid_features(beat, self.fs, wavelet="db4", level=4, nperseg=128),
+                    **extract_hybrid_features(
+                        beat, self.fs, wavelet="db4", level=4, nperseg=128
+                    ),
                 }
             except Exception as e:
                 logger.warning(f"Error extracting features for beat {i}: {str(e)}")
@@ -310,7 +316,9 @@ class ECGPreprocessor:
         except Exception:
             raise ValueError("No trained classifier found")
 
-    def _prepare_features_for_classification(self, beats: List[np.ndarray]) -> np.ndarray:
+    def _prepare_features_for_classification(
+        self, beats: List[np.ndarray]
+    ) -> np.ndarray:
         """
         Prepare a feature matrix by extracting and concatenating features from all beats.
         Features from each beat are truncated or padded so that all feature vectors have equal length.
